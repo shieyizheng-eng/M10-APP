@@ -7,6 +7,9 @@
   
   <!-- Leaflet 地圖 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- jsPDF & html2canvas (用於匯出破浪PDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     * {
@@ -33,6 +36,7 @@
       border-bottom: 2px solid #00a8ff;
       z-index: 1000;
       flex-shrink: 0;
+      align-items: center;
     }
     .top-tab-btn {
       flex: 1;
@@ -50,6 +54,19 @@
       background: #00a8ff;
       color: #ffffff;
     }
+    .pdf-export-btn {
+      background-color: #e1b12c;
+      color: #121619;
+      font-weight: bold;
+      font-size: 0.82rem;
+      border: none;
+      padding: 8px 12px;
+      margin-right: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .pdf-export-btn:active { opacity: 0.85; }
 
     .app-container {
       flex: 1;
@@ -59,7 +76,6 @@
       position: relative;
     }
 
-    /* 電腦版 layout */
     @media (min-width: 850px) {
       .app-container { flex-direction: row; }
       .sidebar {
@@ -78,7 +94,6 @@
       }
     }
 
-    /* 手機版全螢幕獨立視窗 */
     @media (max-width: 849px) {
       .sidebar {
         width: 100% !important;
@@ -367,11 +382,13 @@
 </head>
 <body>
 
-  <!-- 頂部獨立大分頁導航 -->
+  <!-- 頂部全域導航列 -->
   <div class="top-app-bar">
     <button class="top-tab-btn active" id="btnMainSidebarTab" onclick="switchMainTab('sidebar')">數據計算</button>
     <button class="top-tab-btn" id="btnMainCanvasTab" onclick="switchMainTab('canvas')">M10 射擊圖板</button>
     <button class="top-tab-btn" id="btnMainMapTab" onclick="switchMainTab('map')">真實圖例</button>
+    <!-- 指定按鈕：破浪PDF -->
+    <button class="pdf-export-btn" onclick="generatePoLangPDF()">📄 破浪PDF</button>
   </div>
 
   <div class="app-container">
@@ -437,15 +454,19 @@
             </div>
           </div>
 
-          <!-- 動態觀測員 (OP) 管理 -->
+          <!-- 第一點修正：取消新增按鈕，固定單一觀測員 -->
           <div class="input-group">
-            <div class="section-title">1. 觀測員 (OP) 清單與選取</div>
+            <div class="section-title">1. 觀測員 (OP) MGRS 8碼與標高</div>
             <div class="input-row">
-              <label>當前計算 OP:</label>
-              <select id="activeOpSelect" style="width:110px;" onchange="onActiveOpChange()"></select>
+              <label>OP 觀測所:</label>
+              <div class="grid-input-row">
+                <input type="text" id="opE8" value="4999" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+                <span>/</span>
+                <input type="text" id="opN8" value="1962" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+                <span>/</span>
+                <input type="number" id="opAlt" value="100" style="width:45px;" onchange="calculateAndDraw()">
+              </div>
             </div>
-            <div id="opInputsContainer"></div>
-            <button class="action-btn add-btn" onclick="addNewOpRow()">+ 新增觀測員 (OP)</button>
           </div>
 
           <div class="input-group">
@@ -756,11 +777,12 @@
 
         <button class="action-btn" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
 
+        <!-- 第二點修正：欄位更名為 砲目方向角 與 砲目距離 -->
         <div class="result-box" style="margin-top:8px;">
           <div class="result-title">最新效力射產製諸元矩陣</div>
           <table class="result-table">
             <thead>
-              <tr><th>砲位</th><th>修正方位角</th><th>修正距離</th><th>高程差 ΔH</th></tr>
+              <tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>高程差 ΔH</th></tr>
             </thead>
             <tbody id="effectFireTableBody">
               <tr><td colspan="4" style="color:#8395a7;">請點擊上方按鈕計算諸元</td></tr>
@@ -776,7 +798,7 @@
         <div class="section-title" style="margin-top:8px;">最新任務射擊口令表</div>
         <div class="command-output-box" id="commandOutputBox">等待產製射擊指令...</div>
 
-        <!-- 第一點要求：效力射全任務歷史紀錄區 -->
+        <!-- 第二點修正：完整附上射擊諸元矩陣與特別修正口令 -->
         <div class="section-title" style="margin-top:12px; color:#e1b12c; border-color:#e1b12c;">效力射任務歷史履歷</div>
         <div id="effectHistoryContainer">
           <div style="font-size:0.75rem; color:#8395a7; text-align:center;">尚無效力射歷史紀錄</div>
@@ -806,10 +828,6 @@
 
   </div>
 
-  <!-- Leaflet 地圖與 MGRS 庫 -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mgrs@2.0.0/dist/mgrs.min.js"></script>
-
   <script>
     const canvas = document.getElementById('boardCanvas');
     const ctx = canvas.getContext('2d');
@@ -828,10 +846,6 @@
     let panOffsetY = 0; 
     let maxRange = 3000;       
 
-    // 動態資料結構
-    let globalOPs = [{ id: 'OP1', e: '4999', n: '1962', alt: 100 }];
-    let activeOpId = 'OP1';
-
     let globalGuns = [];       
     let globalTargets = [];    
     let correctionShots = [];  
@@ -844,62 +858,9 @@
     let map = null;
     let mapMarkersGroup = null;
 
-    // 30+ 高對比動態色彩生成引擎 (Golden Ratio Hue Spacing)
     function getDistinctColor(index) {
       const hue = Math.round((index * 137.5) % 360);
       return `hsl(${hue}, 90%, 60%)`;
-    }
-
-    function initOpData() {
-      const activeSelect = document.getElementById('activeOpSelect');
-      const container = document.getElementById('opInputsContainer');
-      activeSelect.innerHTML = ''; container.innerHTML = '';
-
-      globalOPs.forEach(op => {
-        const opt = document.createElement('option');
-        opt.value = op.id; opt.innerText = `觀測員 ${op.id}`;
-        if (op.id === activeOpId) opt.selected = true;
-        activeSelect.appendChild(opt);
-
-        const row = document.createElement('div');
-        row.className = 'input-row op-input-row';
-        row.dataset.id = op.id;
-        row.innerHTML = `
-          <label>${op.id} MGRS:</label>
-          <div class="grid-input-row">
-            <input type="text" class="opE8" value="${op.e}" maxlength="4" inputmode="numeric" onchange="updateOpFromInputs()">
-            <span>/</span>
-            <input type="text" class="opN8" value="${op.n}" maxlength="4" inputmode="numeric" onchange="updateOpFromInputs()">
-            <span>/</span>
-            <input type="number" class="opAlt" value="${op.alt}" style="width:45px;" onchange="updateOpFromInputs()">
-          </div>
-        `;
-        container.appendChild(row);
-      });
-    }
-
-    function addNewOpRow() {
-      const newId = `OP${globalOPs.length + 1}`;
-      globalOPs.push({ id: newId, e: '4999', n: '1962', alt: 100 });
-      initOpData(); calculateAndDraw();
-    }
-
-    function onActiveOpChange() {
-      activeOpId = document.getElementById('activeOpSelect').value;
-      calculateAndDraw();
-    }
-
-    function updateOpFromInputs() {
-      document.querySelectorAll('.op-input-row').forEach(row => {
-        const id = row.dataset.id;
-        const opObj = globalOPs.find(o => o.id === id);
-        if (opObj) {
-          opObj.e = row.querySelector('.opE8').value;
-          opObj.n = row.querySelector('.opN8').value;
-          opObj.alt = parseFloat(row.querySelector('.opAlt').value) || 0;
-        }
-      });
-      calculateAndDraw();
     }
 
     function initDefaultTargets() {
@@ -1033,29 +994,25 @@
       const band = document.getElementById('mgrsBand').value || 'R';
       const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
 
-      const activeOp = globalOPs.find(o => o.id === activeOpId) || globalOPs[0];
-      const opEm = parseFloat(activeOp.e) * 10;
-      const opNm = parseFloat(activeOp.n) * 10;
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
 
-      // 1. 觀測員 (OP) 實心三角形
-      globalOPs.forEach(op => {
-        const opLatLng = parseMGRSToLatLng(op.e, op.n);
-        if (opLatLng) {
-          const isCurrent = (op.id === activeOpId);
-          const svg = `<svg width="18" height="18" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="${isCurrent ? '#ff9f43' : '#8395a7'}" stroke="#ffffff" stroke-width="6"/></svg>`;
-          const icon = L.divIcon({ html: svg, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
+      // 1. 固定單一觀測員 (OP) 實心三角形
+      const opLatLng = parseMGRSToLatLng(document.getElementById('opE8').value, document.getElementById('opN8').value);
+      if (opLatLng) {
+        const svg = `<svg width="18" height="18" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="#ff9f43" stroke="#ffffff" stroke-width="6"/></svg>`;
+        const icon = L.divIcon({ html: svg, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
 
-          L.marker(opLatLng, { icon: icon })
-            .bindPopup(`<b>觀測員 ${op.id} ${isCurrent ? '(當前選用)' : ''}</b><br>MGRS: 51${band} ${sq} ${op.e} ${op.n}<br>標高: ${op.alt}m`)
-            .addTo(mapMarkersGroup);
-        }
-      });
+        L.marker(opLatLng, { icon: icon })
+          .bindPopup(`<b>觀測員 (OP)</b><br>MGRS: 51${band} ${sq} ${document.getElementById('opE8').value} ${document.getElementById('opN8').value}<br>標高: ${document.getElementById('opAlt').value}m`)
+          .addTo(mapMarkersGroup);
+      }
 
-      // 2. 砲陣地與 3547m 週向防護圓 (第五點要求)
+      // 2. 砲陣地與 3547m 週向防護圓
       const gunColors = ['#ff4757', '#e1b12c', '#4cd137'];
       globalGuns.forEach((g, idx) => {
-        const gE4 = Math.round((opEm + g.x) / 10);
-        const gN4 = Math.round((opNm + g.y) / 10);
+        const gE4 = Math.round((opE + g.x) / 10);
+        const gN4 = Math.round((opN + g.y) / 10);
         const gLatLng = parseMGRSToLatLng(gE4, gN4);
         if (gLatLng) {
           L.circle(gLatLng, {
@@ -1068,11 +1025,11 @@
         }
       });
 
-      // 3. 目標點 (第一點要求：動態 30+ 獨立色彩引擎標記)
+      // 3. 目標點
       if (showTarget) {
         globalTargets.forEach((t, idx) => {
-          const tE4 = Math.round((opEm + t.x) / 10);
-          const tN4 = Math.round((opNm + t.y) / 10);
+          const tE4 = Math.round((opE + t.x) / 10);
+          const tN4 = Math.round((opN + t.y) / 10);
           const tLatLng = parseMGRSToLatLng(tE4, tN4);
           if (tLatLng) {
             const color = getDistinctColor(idx);
@@ -1086,8 +1043,8 @@
       // 4. #2砲 試射彈著點
       if (showTrial) {
         correctionShots.forEach(shot => {
-          const sE4 = Math.round((opEm + shot.x) / 10);
-          const sN4 = Math.round((opNm + shot.y) / 10);
+          const sE4 = Math.round((opE + shot.x) / 10);
+          const sN4 = Math.round((opN + shot.y) / 10);
           const sLatLng = parseMGRSToLatLng(sE4, sN4);
           if (sLatLng) {
             L.circleMarker(sLatLng, { radius: 5, color: shot.color, fillColor: shot.color, fillOpacity: 0.8 })
@@ -1101,8 +1058,8 @@
       if (showWing) {
         wingShotRounds.forEach(round => {
           round.shots.forEach(shot => {
-            const wE4 = Math.round((opEm + shot.x) / 10);
-            const wN4 = Math.round((opNm + shot.y) / 10);
+            const wE4 = Math.round((opE + shot.x) / 10);
+            const wN4 = Math.round((opN + shot.y) / 10);
             const wLatLng = parseMGRSToLatLng(wE4, wN4);
             if (wLatLng) {
               L.circleMarker(wLatLng, { radius: 5, color: shot.color, fillColor: shot.color, fillOpacity: 0.8 })
@@ -1135,8 +1092,8 @@
             const rotX = pt.x * Math.cos(radOT) - pt.y * Math.sin(radOT);
             const rotY = pt.x * Math.sin(radOT) + pt.y * Math.cos(radOT);
 
-            const cornerE4 = Math.round((opEm + area.centerX + rotX) / 10);
-            const cornerN4 = Math.round((opNm + area.centerY + rotY) / 10);
+            const cornerE4 = Math.round((opE + area.centerX + rotX) / 10);
+            const cornerN4 = Math.round((opN + area.centerY + rotY) / 10);
             const latLng = parseMGRSToLatLng(cornerE4, cornerN4);
             if (latLng) polygonLatLngs.push(latLng);
           });
@@ -1150,8 +1107,7 @@
         });
       }
 
-      const activeOpLatLng = parseMGRSToLatLng(activeOp.e, activeOp.n);
-      if (activeOpLatLng) map.setView(activeOpLatLng, 15);
+      if (opLatLng) map.setView(opLatLng, 15);
     }
 
     function switchTab(tab) {
@@ -1250,7 +1206,6 @@
     function onRotationSliderChange(val) { boardRotationMil = parseFloat(val) % 6400; updateRotationUI(); calculateAndDraw(); }
     function resetRotation() { boardRotationMil = 0; updateRotationUI(); calculateAndDraw(); }
     
-    // 第二點要求：放大倍率提升至 2000% (20.0x)
     function adjustZoom(delta) { contentZoomScale = Math.min(Math.max(0.5, contentZoomScale + delta), 20.0); updateZoomUI(); calculateAndDraw(); }
     function onZoomSliderChange(val) { contentZoomScale = parseFloat(val); updateZoomUI(); calculateAndDraw(); }
     function resetViewPort() {
@@ -1258,7 +1213,6 @@
       updateZoomUI(); calculateAndDraw();
     }
 
-    // 滑鼠滾輪縮放 (上限 2000%)
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -1276,7 +1230,6 @@
       updateZoomUI(); calculateAndDraw();
     }, { passive: false });
 
-    // 第二點要求：Google Maps 式 雙指同時「按壓旋轉 + 捏合縮放」手勢觸控演算
     let isDragging = false, startX = 0, startY = 0;
     let initialTouchDist = null;
     let initialTouchAngle = null;
@@ -1323,11 +1276,9 @@
         const currentDist = Math.hypot(dx, dy);
         const currentAngle = Math.atan2(dy, dx);
 
-        // 1. 雙指捏合/張開縮放
         const zoomFactor = currentDist / initialTouchDist;
         contentZoomScale = Math.min(Math.max(0.5, initialZoomScale * zoomFactor), 20.0);
 
-        // 2. 雙指以中心點為軸心旋轉
         const angleDiffRad = currentAngle - initialTouchAngle;
         const angleDiffMil = angleDiffRad * (6400 / (2 * Math.PI));
         boardRotationMil = (initialRotationMil - angleDiffMil + 64000) % 6400;
@@ -1422,26 +1373,21 @@
         ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
       });
 
-      // 觀測員 (OP) 實心三角形
-      globalOPs.forEach(op => {
-        const activeOp = globalOPs.find(o => o.id === activeOpId) || globalOPs[0];
-        const activeOpEm = parseFloat(activeOp.e) * 10;
-        const activeOpNm = parseFloat(activeOp.n) * 10;
-        const relX = (parseFloat(op.e) * 10) - activeOpEm;
-        const relY = (parseFloat(op.n) * 10) - activeOpNm;
-        const opPos = xyToCanvas(relX, relY);
+      // 固定單一觀測員 (OP) 實心三角形
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+      const opPos = xyToCanvas(0, 0);
 
-        ctx.beginPath();
-        ctx.moveTo(opPos.x, opPos.y - 7);
-        ctx.lineTo(opPos.x + 6, opPos.y + 5);
-        ctx.lineTo(opPos.x - 6, opPos.y + 5);
-        ctx.closePath();
-        ctx.fillStyle = (op.id === activeOpId) ? '#ff9f43' : '#8395a7';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = '#ff9f43'; ctx.font = 'bold 10px sans-serif';
-        ctx.fillText(op.id, opPos.x + 8, opPos.y - 2);
-      });
+      ctx.beginPath();
+      ctx.moveTo(opPos.x, opPos.y - 7);
+      ctx.lineTo(opPos.x + 6, opPos.y + 5);
+      ctx.lineTo(opPos.x - 6, opPos.y + 5);
+      ctx.closePath();
+      ctx.fillStyle = '#ff9f43';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#ff9f43'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('OP', opPos.x + 8, opPos.y - 2);
 
       ctx.restore();
     }
@@ -1458,9 +1404,8 @@
       globalGuns = [];
       globalTargets = [];
 
-      const activeOp = globalOPs.find(o => o.id === activeOpId) || globalOPs[0];
-      const opE = parseFloat(activeOp.e) * 10;
-      const opN = parseFloat(activeOp.n) * 10;
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
 
       if (currentMode === 'grid8') {
         const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
@@ -1556,7 +1501,6 @@
         tbody.appendChild(tr); relTbody.appendChild(relTr);
       });
 
-      // 第一點要求：標繪所有目標 (30+ 獨立色彩)
       globalTargets.forEach((t, idx) => drawPoint(xyToCanvas(t.x, t.y), t.id, getDistinctColor(idx), 5));
       globalGuns.forEach(g => drawPoint(xyToCanvas(g.x, g.y), g.id, '#ff4757', 3.5));
 
@@ -1578,7 +1522,6 @@
         });
       });
 
-      // 第一點要求：在圖板標繪所有效力射涵蓋多邊形 (對齊 OT 軸線)
       effectFireHistory.forEach(item => {
         if (!item.area) return;
         const posCenter = xyToCanvas(item.area.centerX, item.area.centerY);
@@ -1796,15 +1739,14 @@
       });
     }
 
-    /* 第一點要求：執行效力射全履歷紀錄與 30+ 顏色標記 */
+    /* 第二點修正：不重標原向時加上「全排 特別修正」口令備註與全歷次諸元矩陣 */
     function executeEffectFire() {
       const method = document.getElementById('targetDesignationMethod').value;
       const targetName = document.getElementById('newTargetName').value.trim() || `T${globalTargets.length + 1}`;
       
       let newX = 0, newY = 0, newAlt = 50, azOT = 0;
-      const activeOp = globalOPs.find(o => o.id === activeOpId) || globalOPs[0];
-      const opE = parseFloat(activeOp.e) * 10;
-      const opN = parseFloat(activeOp.n) * 10;
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
 
       if (method === 'known') {
         const baseId = document.getElementById('knownPointSelect').value;
@@ -1877,7 +1819,6 @@
       globalGuns.forEach(gun => {
         let targetX = newX, targetY = newY;
 
-        // 沿 OT 軸線旋轉之分佈射擊偏移
         const radOT = milToRad(azOT);
         let shiftW = 0, shiftD = 0;
 
@@ -1919,24 +1860,26 @@
 
       const mtK = mtDistM2 / 1000;
       let turnText = '', cmdText = '';
+      const specialCorrPrefix = !isReindexMode ? '特別修正 ' : '';
+
       if (sheaf === 'section_sheaf') {
         const turns = (6.66 / mtK).toFixed(1);
         turnText = `方向機轉移量 = 6.66 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發分段射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發分段射、向左 ${turns} 轉 3 發、準備好放！`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發分段射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲6發分段射、向左 ${turns} 轉 3 發、準備好放！`;
       } else if (sheaf === 'traverse_4') {
         const turns = (2 / mtK).toFixed(1);
         turnText = `方向機轉移量 = 2 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲4發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲4發橫射、向左 ${turns} 轉 么發、準備好放！`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲4發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲4發橫射、向左 ${turns} 轉 么發、準備好放！`;
       } else if (sheaf === 'traverse_6') {
         const turns = (3.33 / mtK).toFixed(1);
         turnText = `方向機轉移量 = 3.33 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
       } else if (sheaf.includes('search')) {
         turnText = `高低機轉移量 = (兩不同距離射角差) × 2 轉 = <strong>約 3 轉 (每轉 0.5 度)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排 ${specialCorrPrefix}榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`;
       } else {
         turnText = `固定射擊模式：不需要轉動方向機/高低機手轉數。`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：全排集火效力射、目標編號 ${targetName}\n射擊口令：全排榴彈、效力射準備好放！`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：全排集火效力射、目標編號 ${targetName}\n射擊口令：全排 ${specialCorrPrefix}榴彈、效力射準備好放！`;
       }
 
       document.getElementById('handwheelTurnsDisplay').innerHTML = turnText;
@@ -1958,6 +1901,7 @@
       calculateAndDraw();
     }
 
+    /* 第二點修正：效力射履歷附帶完整諸元矩陣表 */
     function renderEffectHistoryUI() {
       const container = document.getElementById('effectHistoryContainer');
       container.innerHTML = '';
@@ -1971,20 +1915,86 @@
         const card = document.createElement('div');
         card.className = 'history-card';
         card.style.borderColor = item.color;
+
+        let gunMatrixRows = '';
+        item.guns.forEach(g => {
+          gunMatrixRows += `<tr><td style="color:#ff4757; font-weight:bold;">${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
+        });
+
         card.innerHTML = `
-          <div style="font-weight:bold; color:${item.color}; display:flex; justify-content:space-between;">
+          <div style="font-weight:bold; color:${item.color}; display:flex; justify-space-between;">
             <span>任務 #${item.id} - 目標: ${item.targetId}</span>
             <span>${item.sheafName}</span>
           </div>
-          <div style="margin-top:4px; color:#e0e6ed;">${item.turnsText}</div>
+          <table class="result-table" style="margin:6px 0;">
+            <thead><tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
+            <tbody>${gunMatrixRows}</tbody>
+          </table>
+          <div style="color:#e0e6ed;">${item.turnsText}</div>
           <div style="margin-top:4px; font-family:monospace; color:#4cd137; white-space:pre-wrap;">${item.cmdText}</div>
         `;
         container.appendChild(card);
       });
     }
 
+    /* 第三點功能：破浪PDF 產製匯出引擎 */
+    async function generatePoLangPDF() {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // 頁面 1：基本諸元與 M10 圖板截圖
+      pdf.setFontSize(16);
+      pdf.text("破浪戰術射擊指揮紀錄報告 (M10)", 15, 15);
+      
+      pdf.setFontSize(10);
+      const band = document.getElementById('mgrsBand').value;
+      const sq = document.getElementById('mgrsSq').value;
+      const opE = document.getElementById('opE8').value;
+      const opN = document.getElementById('opN8').value;
+      const opAlt = document.getElementById('opAlt').value;
+
+      pdf.text(`網格頭標: 51${band} ${sq} | 時間: ${new Date().toLocaleString()}`, 15, 22);
+      pdf.text(`觀測所 (OP): 51${band} ${sq} ${opE} ${opN} (標高: ${opAlt}m)`, 15, 27);
+
+      // 擷取 Canvas 圖片
+      const canvasImg = canvas.toDataURL('image/png');
+      pdf.addImage(canvasImg, 'PNG', 15, 32, 180, 180);
+
+      // 目標座標表格
+      let yPos = 218;
+      pdf.text("【目標點清單】", 15, yPos);
+      yPos += 5;
+      globalTargets.forEach(t => {
+        pdf.text(`• 目標 ${t.id}: MGRS (相對OP: E:${Math.round(t.x)}m, N:${Math.round(t.y)}m) | 標高: ${t.alt}m`, 15, yPos);
+        yPos += 5;
+      });
+
+      // 頁面 2：效力射全履歷
+      pdf.addPage();
+      pdf.setFontSize(14);
+      pdf.text("【效力射歷史履歷與口令表】", 15, 15);
+
+      yPos = 25;
+      effectFireHistory.forEach((item, idx) => {
+        if (yPos > 270) { pdf.addPage(); yPos = 15; }
+        pdf.setFontSize(10);
+        pdf.text(`任務 #${item.id} [${item.targetId}] - ${item.sheafName}`, 15, yPos);
+        yPos += 5;
+
+        item.guns.forEach(g => {
+          pdf.text(`   ${g.gunId}砲: 方向角 ${g.az.toString().padStart(4, '0')} mil | 距離 ${g.dist}m | ΔH ${g.deltaH}m`, 15, yPos);
+          yPos += 4;
+        });
+
+        pdf.setFontSize(8);
+        pdf.text(`   口令: ${item.cmdText.replace(/\n/g, ' / ')}`, 15, yPos);
+        yPos += 7;
+      });
+
+      pdf.save(`破浪射擊報告_${new Date().toISOString().slice(0,10)}.pdf`);
+    }
+
     // 啟動初始化
-    initOpData();
     initDefaultTargets();
     calculateAndDraw();
   </script>
