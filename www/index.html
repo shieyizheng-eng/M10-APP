@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>M10 射擊圖板與真實地圖結合系統</title>
+  <title>M10 射擊圖板與真實地圖系統</title>
   
   <!-- 引入 Leaflet.js 地圖引擎 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -27,9 +27,7 @@
     }
 
     @media (min-width: 850px) {
-      body {
-        flex-direction: row;
-      }
+      body { flex-direction: row; }
       .sidebar {
         width: 450px !important;
         min-width: 450px !important;
@@ -38,9 +36,7 @@
         border-top: none !important;
         order: 1;
       }
-      .main-content {
-        order: 2;
-      }
+      .main-content { order: 2; }
     }
 
     .main-content {
@@ -71,22 +67,20 @@
       max-height: 98vw;
     }
 
-    /* Leaflet 地圖容器 */
     #mapView {
       width: 100%;
       height: 100%;
-      display: none; /* 預設先顯示 Canvas 圖板 */
+      display: none;
       z-index: 5;
     }
 
-    /* 視圖切換控制浮動列 */
     .view-toggle-bar {
       position: absolute;
       top: 10px;
       right: 10px;
-      z-index: 20;
+      z-index: 2000;
       display: flex;
-      background: rgba(30, 36, 43, 0.85);
+      background: rgba(30, 36, 43, 0.9);
       border: 1px solid #00a8ff;
       border-radius: 6px;
       padding: 3px;
@@ -113,7 +107,7 @@
       bottom: 8px;
       color: #8395a7;
       font-size: 0.72rem;
-      background-color: rgba(0,0,0,0.7);
+      background-color: rgba(0,0,0,0.75);
       padding: 4px 10px;
       border-radius: 12px;
       pointer-events: none;
@@ -209,12 +203,8 @@
       align-items: center;
       margin-bottom: 6px;
     }
-    .input-row:last-child {
-      margin-bottom: 0;
-    }
-    label {
-      font-size: 0.78rem;
-    }
+    .input-row:last-child { margin-bottom: 0; }
+    label { font-size: 0.78rem; }
     input[type="number"], input[type="text"], select {
       width: 100px;
       padding: 6px 8px;
@@ -225,9 +215,7 @@
       text-align: right;
       font-size: 0.88rem;
     }
-    select {
-      text-align: left;
-    }
+    select { text-align: left; }
     .grid-input-row {
       display: flex;
       gap: 4px;
@@ -315,18 +303,15 @@
 <body>
 
   <div class="main-content">
-    <!-- 切換視圖控制項 -->
     <div class="view-toggle-bar">
       <button class="v-btn active" id="btnCanvasView" onclick="toggleMainView('canvas')">M10 圖板</button>
-      <button class="v-btn" id="btnMapView" onclick="toggleMainView('map')">真實地圖 (NLSC)</button>
+      <button class="v-btn" id="btnMapView" onclick="toggleMainView('map')">真實地圖</button>
     </div>
 
-    <!-- 傳統 Canvas 繪圖區域 -->
     <div class="canvas-container" id="canvasContainer">
       <canvas id="boardCanvas" width="760" height="760"></canvas>
     </div>
 
-    <!-- Leaflet 地圖容器 -->
     <div id="mapView"></div>
 
     <div class="board-hint" id="viewHint">💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板</div>
@@ -378,13 +363,13 @@
 
       <div id="grid8Inputs">
         <div class="input-group">
-          <div class="section-title">觀測所 (OP) 8碼座標</div>
+          <div class="section-title">觀測所 (OP) 8碼座標 (以新竹湖口台地為基準)</div>
           <div class="input-row">
             <label>東(E) / 北(N) 4碼:</label>
             <div class="grid-input-row">
-              <input type="text" id="opE8" value="4999" maxlength="4" inputmode="numeric">
+              <input type="text" id="opE8" value="2500" maxlength="4" inputmode="numeric">
               <span>/</span>
-              <input type="text" id="opN8" value="1962" maxlength="4" inputmode="numeric">
+              <input type="text" id="opN8" value="2750" maxlength="4" inputmode="numeric">
             </div>
           </div>
         </div>
@@ -392,22 +377,22 @@
         <div class="input-group">
           <div class="section-title">砲陣地座標 (8碼公尺制)</div>
           <div class="input-row"><label>#1 砲:</label>
-            <div class="grid-input-row"><input type="text" id="m1E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="1929" maxlength="4" inputmode="numeric"></div>
+            <div class="grid-input-row"><input type="text" id="m1E8" value="2510" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="2720" maxlength="4" inputmode="numeric"></div>
           </div>
           <div class="input-row"><label>#2 砲 (基準):</label>
-            <div class="grid-input-row"><input type="text" id="m2E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="1927" maxlength="4" inputmode="numeric"></div>
+            <div class="grid-input-row"><input type="text" id="m2E8" value="2510" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="2718" maxlength="4" inputmode="numeric"></div>
           </div>
           <div class="input-row"><label>#3 砲:</label>
-            <div class="grid-input-row"><input type="text" id="m3E8" value="5006" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="1928" maxlength="4" inputmode="numeric"></div>
+            <div class="grid-input-row"><input type="text" id="m3E8" value="2507" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="2719" maxlength="4" inputmode="numeric"></div>
           </div>
         </div>
 
         <div class="input-group">
           <div class="section-title">目標點座標 (T1 ~ T4)</div>
-          <div class="input-row"><label>目標 T1:</label><div class="grid-input-row"><input type="text" id="t1E8" value="4945" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t1N8" value="2091" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T2:</label><div class="grid-input-row"><input type="text" id="t2E8" value="4945" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t2N8" value="2081" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T3:</label><div class="grid-input-row"><input type="text" id="t3E8" value="4945" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t3N8" value="2071" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T4:</label><div class="grid-input-row"><input type="text" id="t4E8" value="4945" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t4N8" value="2061" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T1:</label><div class="grid-input-row"><input type="text" id="t1E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t1N8" value="2881" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T2:</label><div class="grid-input-row"><input type="text" id="t2E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t2N8" value="2871" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T3:</label><div class="grid-input-row"><input type="text" id="t3E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t3N8" value="2861" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T4:</label><div class="grid-input-row"><input type="text" id="t4E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t4N8" value="2851" maxlength="4" inputmode="numeric"></div></div>
         </div>
       </div>
 
@@ -601,7 +586,6 @@
 
   </div>
 
-  <!-- 引入 Leaflet.js 地圖庫 -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
@@ -629,43 +613,57 @@
     let baseAzimuthM2T1 = 0;
     const shotColors = ['#ff9f43', '#f368e0', '#ffda79', '#00d2d3', '#54a0ff', '#5f27cd'];
 
-    /* Leaflet 地圖變數 */
     let map = null;
     let mapMarkersGroup = null;
     let currentMainView = 'canvas';
 
-    /* 初始化 Leaflet 地圖 (介接內政部國土測繪中心 NLSC 免費圖資) */
+    /* 多重圖層初始化（內政部 NLSC + OSM + Esri 衛星圖） */
     function initMap() {
       if (map) return;
 
-      // 預設中心點設為湖口台地附近的 TWD97/WGS84 座標
+      // 預設中心點：新竹湖口台地軍事訓練場附近 [lat, lng]
       map = L.map('mapView', {
         center: [24.8708, 121.0660],
         zoom: 14,
         zoomControl: true
       });
 
-      // 1. 通用電子地圖 (EMAP)
-      const emap = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', {
+      // 1. OpenStreetMap 全球標準地圖 (極其穩定)
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      });
+
+      // 2. Esri 全球正射影像 (高解析度衛星圖)
+      const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 18,
+        attribution: 'Tiles © Esri'
+      });
+
+      // 3. 台灣內政部國土測繪中心 - 通用電子地圖
+      const nlscEmap = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', {
         maxZoom: 19,
         attribution: '© 內政部國土測繪中心'
       });
 
-      // 2. 正射影像圖 (衛星圖 PHOTO2)
-      const photo = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}', {
+      // 4. 台灣內政部國土測繪中心 - 衛星正射影像
+      const nlscPhoto = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}', {
         maxZoom: 19,
         attribution: '© 內政部國土測繪中心'
       });
 
-      emap.addTo(map);
+      // 預設先載入 OSM 全球地圖
+      osm.addTo(map);
 
-      // 地圖圖層切換選單
+      // 右上角圖層選擇選單
       const baseMaps = {
-        "通用電子地圖": emap,
-        "正射影像 (衛星圖)": photo
+        "全球街道圖 (OSM)": osm,
+        "全球衛星圖 (Esri)": esriSat,
+        "台灣電子地圖 (NLSC)": nlscEmap,
+        "台灣正射影像 (NLSC)": nlscPhoto
       };
-      L.control.layers(baseMaps).addTo(map);
 
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
       mapMarkersGroup = L.layerGroup().addTo(map);
     }
 
@@ -681,7 +679,7 @@
       } else {
         document.getElementById('canvasContainer').style.display = 'none';
         document.getElementById('mapView').style.display = 'block';
-        document.getElementById('viewHint').innerText = "💡 真實電子地圖模式（資料來源：內政部國土測繪中心）";
+        document.getElementById('viewHint').innerText = "💡 真實地圖模式（可使用右上角選單切換衛星圖/街道圖）";
         
         initMap();
         setTimeout(() => { map.invalidateSize(); }, 200);
@@ -689,7 +687,7 @@
       }
     }
 
-    /* 將 TWD97 二度分帶 (X, Y) 轉成 WGS84 (lat, lng) 概略轉換公式 (用於地圖定位) */
+    /* 將 TWD97 8碼二度分帶 (X, Y) 正確對齊至台灣陸地上 (基準點為湖口台地 2500, 2750) */
     function twd97ToLatLng(x, y) {
       const a = 6378137.0, b = 6356752.3142451;
       const k0 = 0.9999, dx = 250000;
@@ -717,18 +715,17 @@
       return [lat * 180 / Math.PI, lng * 180 / Math.PI];
     }
 
-    /* 將最新陣地與目標更新到 Leaflet 地圖上 */
     function updateMapMarkers() {
       if (!map || !mapMarkersGroup) return;
       mapMarkersGroup.clearLayers();
 
       const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
-      const opE = getVal('opE8') * 10;
-      const opN = getVal('opN8') * 10;
+      const opE = getVal('opE8') * 100;
+      const opN = getVal('opN8') * 100;
 
       if (opE > 0 && opN > 0) {
         const opLatLng = twd97ToLatLng(opE, opN);
-        L.circleMarker(opLatLng, { radius: 8, color: '#ff9f43', fillColor: '#ff9f43', fillOpacity: 0.9 })
+        L.circleMarker(opLatLng, { radius: 9, color: '#ff9f43', fillColor: '#ff9f43', fillOpacity: 0.9 })
           .bindPopup('<b>觀測所 (OP)</b>')
           .addTo(mapMarkersGroup);
 
