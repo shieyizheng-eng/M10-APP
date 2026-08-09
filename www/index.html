@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>M10 射擊圖板 (東引 MGRS 戰術版)</title>
+  <title>M10 射擊圖板 (東引戰術與亞倫教案整合版)</title>
   
-  <!-- 引入 Leaflet 地圖 CSS -->
+  <!-- Leaflet 地圖 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -26,11 +26,43 @@
       overflow: hidden;
     }
 
+    /* 頂部全域分頁切換列 */
+    .top-app-bar {
+      display: flex;
+      background-color: #1c262f;
+      border-bottom: 2px solid #00a8ff;
+      z-index: 100;
+    }
+    .top-tab-btn {
+      flex: 1;
+      padding: 12px 10px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      background: transparent;
+      color: #8395a7;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .top-tab-btn.active {
+      background: #00a8ff;
+      color: #ffffff;
+    }
+
+    .app-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
     @media (min-width: 850px) {
-      body { flex-direction: row; }
+      .app-container { flex-direction: row; }
       .sidebar {
-        width: 450px !important;
-        min-width: 450px !important;
+        width: 480px !important;
+        min-width: 480px !important;
         height: 100% !important;
         border-right: 1px solid #2d3d36;
         border-top: none !important;
@@ -50,6 +82,7 @@
       min-height: 40vh;
       overflow: hidden;
     }
+    
     .canvas-container {
       position: relative;
       width: 100%;
@@ -72,34 +105,6 @@
       height: 100%;
       display: none;
       z-index: 5;
-    }
-
-    .view-toggle-bar {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 2000;
-      display: flex;
-      background: rgba(30, 36, 43, 0.9);
-      border: 1px solid #00a8ff;
-      border-radius: 6px;
-      padding: 3px;
-      gap: 4px;
-      backdrop-filter: blur(4px);
-    }
-    .v-btn {
-      padding: 6px 12px;
-      font-size: 0.78rem;
-      font-weight: bold;
-      background: transparent;
-      color: #8395a7;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .v-btn.active {
-      background: #00a8ff;
-      color: #fff;
     }
 
     .board-hint {
@@ -128,13 +133,6 @@
       overflow-y: auto;
       border-top: 2px solid #2d3d36;
     }
-    h1 {
-      font-size: 1.05rem;
-      color: #4cd137;
-      border-bottom: 2px solid #4cd137;
-      padding-bottom: 4px;
-      text-align: center;
-    }
 
     .tab-header {
       display: flex;
@@ -145,11 +143,11 @@
     }
     .tab-btn {
       flex: 1;
-      padding: 10px 2px;
+      padding: 8px 2px;
       border: none;
       background-color: transparent;
       color: #8395a7;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: bold;
       border-radius: 4px;
       text-align: center;
@@ -169,11 +167,11 @@
     }
     .mode-btn {
       flex: 1;
-      padding: 8px 2px;
+      padding: 6px 2px;
       border: none;
       background-color: transparent;
       color: #8395a7;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: bold;
       border-radius: 4px;
     }
@@ -206,14 +204,14 @@
     .input-row:last-child { margin-bottom: 0; }
     label { font-size: 0.78rem; }
     input[type="number"], input[type="text"], select {
-      width: 100px;
-      padding: 6px 8px;
+      width: 85px;
+      padding: 5px 6px;
       border-radius: 4px;
       border: 1px solid #485460;
       background-color: #1e242b;
       color: #fff;
       text-align: right;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
     }
     select { text-align: left; }
     .grid-input-row {
@@ -222,7 +220,7 @@
       align-items: center;
     }
     .grid-input-row input {
-      width: 60px;
+      width: 55px;
       text-align: center;
     }
 
@@ -243,7 +241,7 @@
       height: 28px;
     }
     .btn-mini {
-      padding: 6px 8px;
+      padding: 5px 7px;
       font-size: 0.75rem;
       background-color: #3c4858;
       color: #fff;
@@ -252,18 +250,25 @@
     }
 
     button.action-btn {
-      padding: 12px;
+      padding: 10px;
       background-color: #4cd137;
       color: #1e242b;
       font-weight: bold;
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       border: none;
       border-radius: 6px;
       width: 100%;
+      cursor: pointer;
     }
+    button.action-btn:active { opacity: 0.85; }
     button.danger-btn {
       background-color: #ff4757;
       color: #fff;
+    }
+    button.add-btn {
+      background-color: #00a8ff;
+      color: #fff;
+      margin-top: 6px;
     }
 
     .result-box {
@@ -298,313 +303,471 @@
     table.result-table td.val-az { color: #4cd137; font-weight: bold; }
     table.result-table td.val-rel { color: #fbc531; font-weight: bold; }
     table.result-table td.val-dist { color: #00d2d3; font-weight: bold; }
+    table.result-table td.val-alt { color: #e1b12c; }
+
+    .command-output-box {
+      background-color: #151a1e;
+      border: 1px solid #4cd137;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #4cd137;
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+    .warning-box {
+      background-color: rgba(255, 71, 87, 0.2);
+      border: 1px solid #ff4757;
+      color: #ff4757;
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      margin-bottom: 6px;
+    }
   </style>
 </head>
 <body>
 
-  <div class="main-content">
-    <div class="view-toggle-bar">
-      <button class="v-btn active" id="btnCanvasView" onclick="toggleMainView('canvas')">M10 圖板</button>
-      <button class="v-btn" id="btnMapView" onclick="toggleMainView('map')">東引真實地圖</button>
-    </div>
-
-    <div class="canvas-container" id="canvasContainer">
-      <canvas id="boardCanvas" width="760" height="760"></canvas>
-    </div>
-
-    <div id="mapView"></div>
-
-    <div class="board-hint" id="viewHint">💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板</div>
+  <!-- 頂部獨立大分頁導航 -->
+  <div class="top-app-bar">
+    <button class="top-tab-btn active" id="btnMainCanvasTab" onclick="switchMainTab('canvas')">M10 射擊圖板</button>
+    <button class="top-tab-btn" id="btnMainMapTab" onclick="switchMainTab('map')">東引戰術真實地圖 (MGRS)</button>
   </div>
 
-  <div class="sidebar">
-    <h1>M10 射擊圖板 (東引戰術專用版)</h1>
+  <div class="app-container">
+    <div class="main-content">
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="boardCanvas" width="760" height="760"></canvas>
+      </div>
 
-    <div class="tab-header">
-      <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1. 諸元圖解</button>
-      <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">2. 落彈修正</button>
-      <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">3. 翼次射觀修</button>
+      <div id="mapView"></div>
+
+      <div class="board-hint" id="viewHint">💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板</div>
     </div>
 
-    <div class="dial-control-group">
-      <div class="section-title" style="color: #e1b12c; border-color: #e1b12c;">圖板轉盤與內盤視角控制</div>
-      <div class="input-row">
-        <label>旋轉角度: <strong id="rotAngleDisplay" style="color:#00a8ff;">0000 mil</strong></label>
-        <div>
-          <button class="btn-mini" onclick="adjustRotation(-100)">-100</button>
-          <button class="btn-mini" onclick="adjustRotation(-10)">-10</button>
-          <button class="btn-mini" onclick="adjustRotation(10)">+10</button>
-          <button class="btn-mini" onclick="adjustRotation(100)">+100</button>
+    <div class="sidebar" id="sidebarContainer">
+      <div class="tab-header">
+        <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1. 諸元圖解</button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">2. 落彈修正</button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">3. 翼次射觀修</button>
+        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">4. 效力射(教案)</button>
+      </div>
+
+      <div class="dial-control-group">
+        <div class="section-title" style="color: #e1b12c; border-color: #e1b12c;">圖板轉盤與內盤視角控制</div>
+        <div class="input-row">
+          <label>旋轉角度: <strong id="rotAngleDisplay" style="color:#00a8ff;">0000 mil</strong></label>
+          <div>
+            <button class="btn-mini" onclick="adjustRotation(-100)">-100</button>
+            <button class="btn-mini" onclick="adjustRotation(-10)">-10</button>
+            <button class="btn-mini" onclick="adjustRotation(10)">+10</button>
+            <button class="btn-mini" onclick="adjustRotation(100)">+100</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="rotSlider" min="0" max="6400" value="0" step="5" oninput="onRotationSliderChange(this.value)">
+          <button class="btn-mini" onclick="resetRotation()">歸零</button>
+        </div>
+
+        <div class="input-row" style="margin-top: 6px;">
+          <label>縮放倍率: <strong id="zoomDisplay" style="color:#4cd137;">100%</strong></label>
+          <div>
+            <button class="btn-mini" onclick="adjustZoom(-0.25)">- 縮小</button>
+            <button class="btn-mini" onclick="adjustZoom(0.25)">+ 放大</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="zoomSlider" min="0.5" max="8.0" value="1.0" step="0.05" oninput="onZoomSliderChange(this.value)">
+          <button class="btn-mini" onclick="resetViewPort()">重置</button>
         </div>
       </div>
-      <div class="slider-row">
-        <input type="range" id="rotSlider" min="0" max="6400" value="0" step="5" oninput="onRotationSliderChange(this.value)">
-        <button class="btn-mini" onclick="resetRotation()">歸零</button>
-      </div>
 
-      <div class="input-row" style="margin-top: 6px;">
-        <label>縮放倍率: <strong id="zoomDisplay" style="color:#4cd137;">100%</strong></label>
-        <div>
-          <button class="btn-mini" onclick="adjustZoom(-0.25)">- 縮小</button>
-          <button class="btn-mini" onclick="adjustZoom(0.25)">+ 放大</button>
+      <!-- 分頁一：諸元圖解 -->
+      <div id="tab1Content">
+        <div class="mode-switch" style="margin: 6px 0;">
+          <button class="mode-btn active" id="btn8Grid" onclick="switchMode('grid8')">MGRS 8碼模式</button>
+          <button class="mode-btn" id="btnPolar" onclick="switchMode('polar')">極座標模式</button>
         </div>
-      </div>
-      <div class="slider-row">
-        <input type="range" id="zoomSlider" min="0.5" max="8.0" value="1.0" step="0.05" oninput="onZoomSliderChange(this.value)">
-        <button class="btn-mini" onclick="resetViewPort()">重置</button>
-      </div>
-    </div>
 
-    <div id="tab1Content">
-      <div class="mode-switch" style="margin: 6px 0;">
-        <button class="mode-btn active" id="btn8Grid" onclick="switchMode('grid8')">MGRS 8碼模式</button>
-        <button class="mode-btn" id="btnPolar" onclick="switchMode('polar')">極座標模式</button>
-      </div>
-
-      <div id="grid8Inputs">
-        <div class="input-group">
-          <div class="section-title">MGRS 網格區頭標設定</div>
-          <div class="input-row">
-            <label> Zone / 緯度帶 / 100km區:</label>
-            <div class="grid-input-row">
-              <input type="text" id="mgrsZone" value="51" readonly style="width:35px; text-align:center; background:#121619;">
-              <select id="mgrsBand" style="width:50px; text-align:center;">
-                <option value="R" selected>R</option>
-                <option value="Q">Q</option>
-              </select>
-              <input type="text" id="mgrsSq" value="TV" maxlength="2" style="width:45px; text-align:center; text-transform:uppercase;">
+        <div id="grid8Inputs">
+          <div class="input-group">
+            <div class="section-title">MGRS 網格區頭標設定</div>
+            <div class="input-row">
+              <label>Zone / 緯度帶 / 100km區:</label>
+              <div class="grid-input-row">
+                <input type="text" id="mgrsZone" value="51" readonly style="width:35px; text-align:center; background:#121619;">
+                <select id="mgrsBand" style="width:50px; text-align:center;" onchange="calculateAndDraw()">
+                  <option value="R" selected>R</option>
+                  <option value="Q">Q</option>
+                </select>
+                <input type="text" id="mgrsSq" value="TK" maxlength="2" style="width:45px; text-align:center; text-transform:uppercase;" onchange="calculateAndDraw()">
+              </div>
+            </div>
+            <div style="font-size: 0.7rem; color: #8395a7; margin-top: 4px;">
+              💡 註：預設 `51R TK` 為台灣馬祖東引島戰區網格。
             </div>
           </div>
-          <div style="font-size: 0.7rem; color: #8395a7; margin-top: 4px;">
-            💡 註：預設 `51R TV` 為台灣馬祖東引島專用網格區。
-          </div>
-        </div>
 
-        <div class="input-group">
-          <div class="section-title">觀測所 (OP) MGRS 8碼座標</div>
-          <div class="input-row">
-            <label>東(E) / 北(N) 4碼:</label>
-            <div class="grid-input-row">
-              <input type="text" id="opE8" value="4900" maxlength="4" inputmode="numeric">
-              <span>/</span>
-              <input type="text" id="opN8" value="1800" maxlength="4" inputmode="numeric">
+          <div class="input-group">
+            <div class="section-title">1. 觀測所 (OP) MGRS 8碼與標高</div>
+            <div class="input-row">
+              <label>東(E) / 北(N) 4碼 / 標高(m):</label>
+              <div class="grid-input-row">
+                <input type="text" id="opE8" value="4999" maxlength="4" inputmode="numeric">
+                <span>/</span>
+                <input type="text" id="opN8" value="1962" maxlength="4" inputmode="numeric">
+                <span>/</span>
+                <input type="number" id="opAlt" value="100" style="width:50px;">
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="input-group">
-          <div class="section-title">砲陣地 MGRS 8碼座標</div>
-          <div class="input-row"><label>#1 砲:</label>
-            <div class="grid-input-row"><input type="text" id="m1E8" value="4910" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="1770" maxlength="4" inputmode="numeric"></div>
+          <div class="input-group">
+            <div class="section-title">2. 砲陣地 MGRS 8碼與標高</div>
+            <div class="input-row"><label>#1 砲:</label>
+              <div class="grid-input-row"><input type="text" id="m1E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="1929" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m1Alt" value="85" style="width:45px;"></div>
+            </div>
+            <div class="input-row"><label>#2 砲 (基準):</label>
+              <div class="grid-input-row"><input type="text" id="m2E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="1927" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m2Alt" value="85" style="width:45px;"></div>
+            </div>
+            <div class="input-row"><label>#3 砲:</label>
+              <div class="grid-input-row"><input type="text" id="m3E8" value="5006" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="1928" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m3Alt" value="85" style="width:45px;"></div>
+            </div>
           </div>
-          <div class="input-row"><label>#2 砲 (基準):</label>
-            <div class="grid-input-row"><input type="text" id="m2E8" value="4910" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="1768" maxlength="4" inputmode="numeric"></div>
+
+          <div class="input-group">
+            <div class="section-title">3. 動態目標點清單 (E / N / 標高)</div>
+            <div id="targetInputsContainer">
+              <!-- 動態生成目標列 -->
+            </div>
+            <button class="action-btn add-btn" onclick="addNewTargetRow()">+ 動態新增目標</button>
           </div>
-          <div class="input-row"><label>#3 砲:</label>
-            <div class="grid-input-row"><input type="text" id="m3E8" value="4907" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="1769" maxlength="4" inputmode="numeric"></div>
+        </div>
+
+        <div id="polarInputs" style="display: none;">
+          <div class="input-group">
+            <div class="section-title">1. 觀測所 ➔ 目標 T1</div>
+            <div class="input-row"><label>觀目方位角 (密位):</label><input type="number" id="azT1" value="950" min="0" max="6400" inputmode="numeric"></div>
+            <div class="input-row"><label>觀目距離 (公尺):</label><input type="number" id="distT1" value="1200" min="0" max="10000" inputmode="numeric"></div>
+          </div>
+          <div class="input-group">
+            <div class="section-title">2. 觀測所 ➔ #1 砲陣地</div>
+            <div class="input-row"><label>觀砲方位角 (密位):</label><input type="number" id="azM1" value="4750" min="0" max="6400" inputmode="numeric"></div>
+            <div class="input-row"><label>觀砲距離 (公尺):</label><input type="number" id="distM1" value="600" min="0" max="10000" inputmode="numeric"></div>
           </div>
         </div>
 
+        <button class="action-btn" style="margin-bottom: 8px;" onclick="calculateAndDraw()">重新圖解標點</button>
+
+        <div class="result-box" style="border-color: #00d2d3;">
+          <div class="result-title" style="color:#00d2d3;">砲陣地橫向配置距離矩陣</div>
+          <table class="result-table">
+            <thead><tr><th>項目</th><th>#2 對 #1 砲橫向距</th><th>#3 對 #2 砲橫向距</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="color:#ff4757; font-weight:bold;">垂直配置差</td>
+                <td id="dispM2M1" class="val-dist">0.0 m</td>
+                <td id="dispM3M2" class="val-dist">0.0 m</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title">基本諸元矩陣 (絕對方位角 / 水平距離 / 高程差 ΔH)</div>
+          <table class="result-table">
+            <thead><tr id="resultTableHeader"><th>砲位 \ 目標</th></tr></thead>
+            <tbody id="resultTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title" style="color:#4cd137;">定向註記分劃矩陣 (以 #2砲➔T1 為 0 密位)</div>
+          <table class="result-table">
+            <thead><tr id="relativeTableHeader"><th>砲位 \ 目標</th></tr></thead>
+            <tbody id="relativeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 分頁二：落彈修正 -->
+      <div id="tab2Content" style="display: none;">
         <div class="input-group">
-          <div class="section-title">目標點 MGRS 8碼座標 (T1 ~ T4)</div>
-          <div class="input-row"><label>目標 T1:</label><div class="grid-input-row"><input type="text" id="t1E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t1N8" value="1931" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T2:</label><div class="grid-input-row"><input type="text" id="t2E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t2N8" value="1921" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T3:</label><div class="grid-input-row"><input type="text" id="t3E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t3N8" value="1911" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T4:</label><div class="grid-input-row"><input type="text" id="t4E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t4N8" value="1901" maxlength="4" inputmode="numeric"></div></div>
+          <div class="section-title">1. 修正對象與觀目資料</div>
+          <div class="input-row">
+            <label for="corrTargetSelect">修正基準目標:</label>
+            <select id="corrTargetSelect" onchange="updateOTDataDisplay()"></select>
+          </div>
+          <div class="input-row"><label>觀目方位角 ∠OT:</label><input type="number" id="corrAzOT" value="0" readonly style="background:#2c3a47;"></div>
+          <div class="input-row"><label>觀目距離 D_OT (m):</label><input type="number" id="corrDistOT" value="0" readonly style="background:#2c3a47;"></div>
         </div>
-      </div>
 
-      <div id="polarInputs" style="display: none;">
         <div class="input-group">
-          <div class="section-title">1. 觀測所 ➔ 目標 T1</div>
-          <div class="input-row"><label>觀目方位角 (密位):</label><input type="number" id="azT1" value="950" min="0" max="6400" inputmode="numeric"></div>
-          <div class="input-row"><label>觀目距離 (公尺):</label><input type="number" id="distT1" value="1200" min="0" max="10000" inputmode="numeric"></div>
-        </div>
-        <div class="input-group">
-          <div class="section-title">2. 觀測所 ➔ #1 砲陣地</div>
-          <div class="input-row"><label>觀砲方位角 (密位):</label><input type="number" id="azM1" value="4750" min="0" max="6400" inputmode="numeric"></div>
-          <div class="input-row"><label>觀砲距離 (公尺):</label><input type="number" id="distM1" value="600" min="0" max="10000" inputmode="numeric"></div>
-        </div>
-      </div>
-
-      <button class="action-btn" style="margin-bottom: 8px;" onclick="calculateAndDraw()">重新圖解標點</button>
-
-      <div class="result-box" style="border-color: #00d2d3;">
-        <div class="result-title" style="color:#00d2d3;">砲陣地橫向配置距離矩陣</div>
-        <table class="result-table">
-          <thead><tr><th>項目</th><th>#2 對 #1 砲橫向距</th><th>#3 對 #2 砲橫向距</th></tr></thead>
-          <tbody>
-            <tr>
-              <td style="color:#ff4757; font-weight:bold;">垂直配置差</td>
-              <td id="dispM2M1" class="val-dist">0.0 m</td>
-              <td id="dispM3M2" class="val-dist">0.0 m</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="result-box">
-        <div class="result-title">基本諸元矩陣 (絕對方位角 / 水平距離)</div>
-        <table class="result-table">
-          <thead><tr><th>砲位 \ 目標</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead>
-          <tbody id="resultTableBody"></tbody>
-        </table>
-      </div>
-
-      <div class="result-box">
-        <div class="result-title" style="color:#4cd137;">定向註記分劃矩陣 (以 #2砲➔T1 為 0 密位)</div>
-        <table class="result-table">
-          <thead><tr><th>砲位 \ 目標</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead>
-          <tbody id="relativeTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div id="tab2Content" style="display: none;">
-      <div class="input-group">
-        <div class="section-title">1. 修正對象與觀目資料</div>
-        <div class="input-row">
-          <label for="corrTargetSelect">修正基準目標:</label>
-          <select id="corrTargetSelect" onchange="updateOTDataDisplay()"></select>
-        </div>
-        <div class="input-row"><label>觀目方位角 ∠OT:</label><input type="number" id="corrAzOT" value="0" readonly style="background:#2c3a47;"></div>
-        <div class="input-row"><label>觀目距離 D_OT (m):</label><input type="number" id="corrDistOT" value="0" readonly style="background:#2c3a47;"></div>
-      </div>
-
-      <div class="input-group">
-        <div class="section-title">2. 觀測員回報修正口令 (#2砲試射)</div>
-        <div class="input-row">
-          <label for="corrDirType">方向修正項目:</label>
-          <select id="corrDirType" onchange="toggleDirInput()">
-            <option value="m">左右偏差 (公尺)</option>
-            <option value="mil">方向偏差 (密位)</option>
-            <option value="line" selected>原方向</option>
-          </select>
-        </div>
-        <div class="input-row" id="dirValRow" style="display: none;">
-          <label for="corrDirVal">方向修正量:</label>
-          <div class="grid-input-row">
-            <select id="corrDirSign" style="width: 60px;">
-              <option value="left">左</option>
-              <option value="right">右</option>
+          <div class="section-title">2. 觀測員回報修正口令 (#2砲試射)</div>
+          <div class="input-row">
+            <label for="corrDirType">方向修正項目:</label>
+            <select id="corrDirType" onchange="toggleDirInput()">
+              <option value="m">左右偏差 (公尺)</option>
+              <option value="mil">方向偏差 (密位)</option>
+              <option value="line" selected>原方向</option>
             </select>
-            <input type="number" id="corrDirVal" value="50" step="5" inputmode="numeric">
+          </div>
+          <div class="input-row" id="dirValRow" style="display: none;">
+            <label for="corrDirVal">方向修正量:</label>
+            <div class="grid-input-row">
+              <select id="corrDirSign" style="width: 60px;">
+                <option value="left">左</option>
+                <option value="right">右</option>
+              </select>
+              <input type="number" id="corrDirVal" value="50" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <div class="input-row">
+            <label for="corrDistSign">距離修正項目:</label>
+            <select id="corrDistSign" onchange="toggleDistInput()">
+              <option value="add">加多 (Add)</option>
+              <option value="sub">減少 (Drop)</option>
+              <option value="good" selected>原距離</option>
+            </select>
+          </div>
+          <div class="input-row" id="distValRow" style="display: none;">
+            <label for="corrDistVal">距離修正量 (m):</label>
+            <input type="number" id="corrDistVal" value="100" step="25" inputmode="numeric">
           </div>
         </div>
-        <div class="input-row">
-          <label for="corrDistSign">距離修正項目:</label>
-          <select id="corrDistSign" onchange="toggleDistInput()">
-            <option value="add">加多 (Add)</option>
-            <option value="sub">減少 (Drop)</option>
-            <option value="good" selected>原距離</option>
-          </select>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <button class="action-btn" style="flex: 2;" onclick="addCorrectionShot()">下達落彈修正</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="resetCorrections()">清除彈著</button>
         </div>
-        <div class="input-row" id="distValRow" style="display: none;">
-          <label for="corrDistVal">距離修正量 (m):</label>
-          <input type="number" id="corrDistVal" value="100" step="25" inputmode="numeric">
+
+        <div class="result-box">
+          <div class="result-title">最新彈著點對正各砲諸元</div>
+          <table class="result-table">
+            <thead><tr><th>彈著輪次 \ 砲位</th><th>#1 砲</th><th>#2 砲</th><th>#3 砲</th></tr></thead>
+            <tbody id="corrResultTableBody"></tbody>
+          </table>
         </div>
       </div>
 
-      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-        <button class="action-btn" style="flex: 2;" onclick="addCorrectionShot()">下達落彈修正</button>
-        <button class="action-btn danger-btn" style="flex: 1;" onclick="resetCorrections()">清除彈著</button>
+      <!-- 分頁三：翼次射觀修 -->
+      <div id="tab3Content" style="display: none;">
+        <div class="input-group">
+          <div class="section-title">翼次射作戰設定 (#1、#3 砲)</div>
+          <div class="input-row">
+            <label>基準檢驗目標:</label>
+            <select id="wingTargetSelect"></select>
+          </div>
+        </div>
+
+        <div class="input-group" style="border-color: #54a0ff;">
+          <div class="section-title" style="color: #54a0ff; border-color: #54a0ff;">#1 砲觀測回報</div>
+          <div class="input-row">
+            <label>#1方向修正:</label>
+            <select id="gun1DirType" onchange="toggleWingDir(1)">
+              <option value="m">左右偏差(m)</option>
+              <option value="mil">方向偏差(mil)</option>
+              <option value="line" selected>原方向</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun1DirRow" style="display:none;">
+            <label>#1量/向:</label>
+            <div class="grid-input-row">
+              <select id="gun1DirSign" style="width:60px;"><option value="left">左</option><option value="right">右</option></select>
+              <input type="number" id="gun1DirVal" value="25" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <div class="input-row">
+            <label>#1距離修正:</label>
+            <select id="gun1DistSign" onchange="toggleWingDist(1)">
+              <option value="add">加多</option><option value="sub">減少</option><option value="good" selected>原距離</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun1DistRow" style="display:none;">
+            <label>#1距離量(m):</label>
+            <input type="number" id="gun1DistVal" value="50" step="25" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="input-group" style="border-color: #4cd137;">
+          <div class="section-title" style="color: #4cd137; border-color: #4cd137;">#3 砲觀測回報</div>
+          <div class="input-row">
+            <label>#3方向修正:</label>
+            <select id="gun3DirType" onchange="toggleWingDir(3)">
+              <option value="m">左右偏差(m)</option>
+              <option value="mil">方向偏差(mil)</option>
+              <option value="line" selected>原方向</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun3DirRow" style="display:none;">
+            <label>#3量/向:</label>
+            <div class="grid-input-row">
+              <select id="gun3DirSign" style="width:60px;"><option value="left">左</option><option value="right">右</option></select>
+              <input type="number" id="gun3DirVal" value="25" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <div class="input-row">
+            <label>#3距離修正:</label>
+            <select id="gun3DistSign" onchange="toggleWingDist(3)">
+              <option value="add">加多</option><option value="sub">減少</option><option value="good" selected>原距離</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun3DistRow" style="display:none;">
+            <label>#3距離量(m):</label>
+            <input type="number" id="gun3DistVal" value="50" step="25" inputmode="numeric">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <button class="action-btn" style="flex: 2;" onclick="addWingShots()">標繪翼次射彈著</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="resetWingShots()">清除翼次彈</button>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title">翼次射觀修歷史記錄</div>
+          <table class="result-table">
+            <thead><tr><th>輪次 \ 砲位</th><th>#1 砲 諸元</th><th>#3 砲 諸元</th></tr></thead>
+            <tbody id="wingResultTableBody">
+              <tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="result-box">
-        <div class="result-title">最新彈著點對正各砲諸元</div>
-        <table class="result-table">
-          <thead><tr><th>彈著輪次 \ 砲位</th><th>#1 砲</th><th>#2 砲</th><th>#3 砲</th></tr></thead>
-          <tbody id="corrResultTableBody"></tbody>
-        </table>
+      <!-- 分頁四：新目標效力射 (亞倫教案整合) -->
+      <div id="tab4Content" style="display: none;">
+        <div class="input-group">
+          <div class="section-title">1. 定向基底與特別修正量模式</div>
+          <div class="mode-switch">
+            <button class="mode-btn active" id="btnReindex" onclick="setReindexMode(true)">重標原向</button>
+            <button class="mode-btn" id="btnSpecialCorr" onclick="setReindexMode(false)">不重標原向 (套用特別修正量)</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="section-title">2. 新目標標定方式 (教案標準)</div>
+          <div class="input-row">
+            <label>標定方法:</label>
+            <select id="targetDesignationMethod" onchange="toggleDesignationMethod()">
+              <option value="known">已知點轉移法</option>
+              <option value="polar">極座標法</option>
+              <option value="grid">地圖方格座標法</option>
+            </select>
+          </div>
+
+          <!-- 已知點轉移法欄位 -->
+          <div id="knownPointSection">
+            <div class="input-row">
+              <label>基準已知點:</label>
+              <select id="knownPointSelect"></select>
+            </div>
+            <div class="input-row"><label>觀目方位角 ∠OT (密位):</label><input type="number" id="kpAzOT" value="1970" inputmode="numeric"></div>
+            <div class="input-row">
+              <label>左右轉移量 (m):</label>
+              <div class="grid-input-row">
+                <select id="kpDirSign" style="width:60px;"><option value="right">右</option><option value="left">左</option></select>
+                <input type="number" id="kpShiftDir" value="100" inputmode="numeric">
+              </div>
+            </div>
+            <div class="input-row">
+              <label>前後轉移量 (m):</label>
+              <div class="grid-input-row">
+                <select id="kpDistSign" style="width:60px;"><option value="sub">減少</option><option value="add">加多</option></select>
+                <input type="number" id="kpShiftDist" value="150" inputmode="numeric">
+              </div>
+            </div>
+            <div id="kpWarning" class="warning-box" style="display:none;">
+              ⚠️ 警告：轉移量超過 400 密位，已知點轉移誤差較大！建議改用極座標法。
+            </div>
+          </div>
+
+          <!-- 極座標法欄位 -->
+          <div id="polarSection" style="display: none;">
+            <div class="input-row"><label>觀目方位角 ∠OT (密位):</label><input type="number" id="polarNewAz" value="1800" inputmode="numeric"></div>
+            <div class="input-row"><label>觀目距離 D_OT (m):</label><input type="number" id="polarNewDist" value="800" inputmode="numeric"></div>
+            <div class="input-row"><label>目標標高 (m):</label><input type="number" id="polarNewAlt" value="50" inputmode="numeric"></div>
+          </div>
+
+          <!-- 地圖座標法欄位 -->
+          <div id="gridSection" style="display: none;">
+            <div class="input-row">
+              <label>新目標 8 碼 (E/N):</label>
+              <div class="grid-input-row">
+                <input type="text" id="gridNewE" value="4940" maxlength="4" inputmode="numeric">
+                <span>/</span>
+                <input type="text" id="gridNewN" value="2000" maxlength="4" inputmode="numeric">
+              </div>
+            </div>
+            <div class="input-row"><label>目標標高 (m):</label><input type="number" id="gridNewAlt" value="50" inputmode="numeric"></div>
+          </div>
+
+          <div class="input-row" style="margin-top:6px;">
+            <label>新目標名稱/編號:</label>
+            <input type="text" id="newTargetName" value="T5" style="width:100px; text-align:center;">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="section-title">3. 效力射射擊方式選擇 (亞倫教案模組)</div>
+          <div class="input-row">
+            <label>射擊方式:</label>
+            <select id="sheafTypeSelect" onchange="toggleSheafParams()">
+              <optgroup label="固定射擊 (點目標)">
+                <option value="single_fix">單砲固定射 (50m x 50m)</option>
+                <option value="platoon_concentrate">全排集火射 (50m x 50m)</option>
+                <option value="parallel_front">平行火制正面射擊 (120m x 50m)</option>
+              </optgroup>
+              <optgroup label="分佈射擊 (面目標)">
+                <option value="section_sheaf">分段射擊 (200-240m x 50m)</option>
+                <option value="traverse_4">4發橫射 (300m x 30m)</option>
+                <option value="traverse_6">6發橫射 (300m x 50m)</option>
+                <option value="search_2">2發縱射 (50m x 100m)</option>
+                <option value="search_6">6發縱射 (100m x 100m)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="input-row" id="windRow">
+            <label>風向設定:</label>
+            <select id="windDirSelect">
+              <option value="right_to_left">風由右至左 (從左放)</option>
+              <option value="left_to_right" selected>風由左至右 / 無下達 (從右放)</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="action-btn" onclick="executeEffectFire()">標定新目標並計算效力射諸元</button>
+
+        <div class="result-box" style="margin-top:8px;">
+          <div class="result-title">效力射最終產製諸元矩陣</div>
+          <table class="result-table">
+            <thead>
+              <tr><th>砲位</th><th>修正方位角</th><th>修正距離</th><th>高程差 ΔH</th></tr>
+            </thead>
+            <tbody id="effectFireTableBody">
+              <tr><td colspan="4" style="color:#8395a7;">請點擊上方按鈕計算諸元</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box" style="border-color:#4cd137;">
+          <div class="result-title" style="color:#4cd137;">方向機 / 高低機 手轉數計算</div>
+          <div id="handwheelTurnsDisplay" style="font-size:0.75rem; color:#e0e6ed; line-height:1.4;">
+            -
+          </div>
+        </div>
+
+        <div class="section-title" style="margin-top:8px;">射擊指揮官指令與射擊口令表</div>
+        <div class="command-output-box" id="commandOutputBox">
+          等待產製射擊指令...
+        </div>
       </div>
+
     </div>
-
-    <div id="tab3Content" style="display: none;">
-      <div class="input-group">
-        <div class="section-title">翼次射作戰設定 (#1、#3 砲)</div>
-        <div class="input-row">
-          <label>基準檢驗目標:</label>
-          <select id="wingTargetSelect"></select>
-        </div>
-      </div>
-
-      <div class="input-group" style="border-color: #54a0ff;">
-        <div class="section-title" style="color: #54a0ff; border-color: #54a0ff;">#1 砲觀測回報</div>
-        <div class="input-row">
-          <label>#1方向修正:</label>
-          <select id="gun1DirType" onchange="toggleWingDir(1)">
-            <option value="m">左右偏差(m)</option>
-            <option value="mil">方向偏差(mil)</option>
-            <option value="line" selected>原方向</option>
-          </select>
-        </div>
-        <div class="input-row" id="gun1DirRow" style="display:none;">
-          <label>#1量/向:</label>
-          <div class="grid-input-row">
-            <select id="gun1DirSign" style="width:60px;"><option value="left">左</option><option value="right">右</option></select>
-            <input type="number" id="gun1DirVal" value="25" step="5" inputmode="numeric">
-          </div>
-        </div>
-        <div class="input-row">
-          <label>#1距離修正:</label>
-          <select id="gun1DistSign" onchange="toggleWingDist(1)">
-            <option value="add">加多</option><option value="sub">減少</option><option value="good" selected>原距離</option>
-          </select>
-        </div>
-        <div class="input-row" id="gun1DistRow" style="display:none;">
-          <label>#1距離量(m):</label>
-          <input type="number" id="gun1DistVal" value="50" step="25" inputmode="numeric">
-        </div>
-      </div>
-
-      <div class="input-group" style="border-color: #4cd137;">
-        <div class="section-title" style="color: #4cd137; border-color: #4cd137;">#3 砲觀測回報</div>
-        <div class="input-row">
-          <label>#3方向修正:</label>
-          <select id="gun3DirType" onchange="toggleWingDir(3)">
-            <option value="m">左右偏差(m)</option>
-            <option value="mil">方向偏差(mil)</option>
-            <option value="line" selected>原方向</option>
-          </select>
-        </div>
-        <div class="input-row" id="gun3DirRow" style="display:none;">
-          <label>#3量/向:</label>
-          <div class="grid-input-row">
-            <select id="gun3DirSign" style="width:60px;"><option value="left">左</option><option value="right">右</option></select>
-            <input type="number" id="gun3DirVal" value="25" step="5" inputmode="numeric">
-          </div>
-        </div>
-        <div class="input-row">
-          <label>#3距離修正:</label>
-          <select id="gun3DistSign" onchange="toggleWingDist(3)">
-            <option value="add">加多</option><option value="sub">減少</option><option value="good" selected>原距離</option>
-          </select>
-        </div>
-        <div class="input-row" id="gun3DistRow" style="display:none;">
-          <label>#3距離量(m):</label>
-          <input type="number" id="gun3DistVal" value="50" step="25" inputmode="numeric">
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-        <button class="action-btn" style="flex: 2;" onclick="addWingShots()">標繪翼次射彈著</button>
-        <button class="action-btn danger-btn" style="flex: 1;" onclick="resetWingShots()">清除翼次彈</button>
-      </div>
-
-      <div class="result-box">
-        <div class="result-title">翼次射觀修歷史記錄</div>
-        <table class="result-table">
-          <thead><tr><th>輪次 \ 砲位</th><th>#1 砲 諸元</th><th>#3 砲 諸元</th></tr></thead>
-          <tbody id="wingResultTableBody">
-            <tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
 
-  <!-- 引入 Leaflet 地圖與 MGRS 解算庫 -->
+  <!-- Leaflet 地圖與 MGRS 庫 -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mgrs@2.0.0/dist/mgrs.min.js"></script>
 
@@ -616,6 +779,7 @@
     const centerY = canvas.height / 2;
     const fixedBoardRadius = canvas.width / 2 - 55;
 
+    let currentMainView = 'canvas'; 
     let currentTab = 'tab1';
     let currentMode = 'grid8';
 
@@ -630,26 +794,101 @@
     let correctionShots = [];  
     let wingShotRounds = [];   
 
+    let isReindexMode = true; 
     let baseAzimuthM2T1 = 0;
     const shotColors = ['#ff9f43', '#f368e0', '#ffda79', '#00d2d3', '#54a0ff', '#5f27cd'];
 
     let map = null;
     let mapMarkersGroup = null;
-    let currentMainView = 'canvas';
 
-    /* 初始化地圖：中心點對準馬祖東引島 (26.368, 120.493) */
+    // 初始載入預設目標列
+    function initDefaultTargets() {
+      const defaultTargetsData = [
+        { id: 'T1', e: '4945', n: '2091', alt: 50 },
+        { id: 'T2', e: '4945', n: '2081', alt: 50 },
+        { id: 'T3', e: '4946', n: '2071', alt: 50 },
+        { id: 'T4', e: '4946', n: '2061', alt: 50 }
+      ];
+
+      const container = document.getElementById('targetInputsContainer');
+      container.innerHTML = '';
+
+      defaultTargetsData.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'input-row target-input-row';
+        row.dataset.id = t.id;
+        row.innerHTML = `
+          <label>目標 ${t.id}:</label>
+          <div class="grid-input-row">
+            <input type="text" class="tE8" value="${t.e}" maxlength="4" inputmode="numeric">
+            <span>/</span>
+            <input type="text" class="tN8" value="${t.n}" maxlength="4" inputmode="numeric">
+            <span>/</span>
+            <input type="number" class="tAlt" value="${t.alt}" style="width:45px;">
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function addNewTargetRow(targetIdStr = null, defaultE = '4940', defaultN = '2000', defaultAlt = 50) {
+      const container = document.getElementById('targetInputsContainer');
+      const count = container.querySelectorAll('.target-input-row').length + 1;
+      const tid = targetIdStr || `T${count}`;
+
+      const row = document.createElement('div');
+      row.className = 'input-row target-input-row';
+      row.dataset.id = tid;
+      row.innerHTML = `
+        <label>目標 ${tid}:</label>
+        <div class="grid-input-row">
+          <input type="text" class="tE8" value="${defaultE}" maxlength="4" inputmode="numeric">
+          <span>/</span>
+          <input type="text" class="tN8" value="${defaultN}" maxlength="4" inputmode="numeric">
+          <span>/</span>
+          <input type="number" class="tAlt" value="${defaultAlt}" style="width:45px;">
+        </div>
+      `;
+      container.appendChild(row);
+      calculateAndDraw();
+    }
+
+    /* 切換主大分頁：M10 圖板 vs 東引真實地圖 */
+    function switchMainTab(viewType) {
+      currentMainView = viewType;
+      document.getElementById('btnMainCanvasTab').classList.toggle('active', viewType === 'canvas');
+      document.getElementById('btnMainMapTab').classList.toggle('active', viewType === 'map');
+
+      if (viewType === 'canvas') {
+        document.getElementById('canvasContainer').style.display = 'flex';
+        document.getElementById('mapView').style.display = 'none';
+        document.getElementById('sidebarContainer').style.display = 'flex';
+        document.getElementById('viewHint').innerText = "💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板";
+      } else {
+        document.getElementById('canvasContainer').style.display = 'none';
+        document.getElementById('mapView').style.display = 'block';
+        document.getElementById('sidebarContainer').style.display = 'none';
+        document.getElementById('viewHint').innerText = "💡 東引戰術地圖模式（可於右上角選單切換衛星圖/街道圖）";
+        
+        initMap();
+        setTimeout(() => { map.invalidateSize(); }, 200);
+        updateMapMarkers();
+      }
+    }
+
+    /* 初始化 Leaflet 地圖 (中心點：馬祖東引島 26.368, 120.493) */
     function initMap() {
       if (map) return;
 
       map = L.map('mapView', {
         center: [26.368, 120.493],
-        zoom: 14,
+        zoom: 15,
         zoomControl: true
       });
 
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
+        attribution: '© OpenStreetMap'
       });
 
       const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -659,14 +898,14 @@
 
       const nlscEmap = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', {
         maxZoom: 19,
-        attribution: '© 內政部國土測繪中心'
+        attribution: '© 國土測繪中心'
       });
 
       osm.addTo(map);
 
       const baseMaps = {
         "全球街道圖 (OSM)": osm,
-        "全球高解析衛星圖 (Esri)": esriSat,
+        "高解析衛星圖 (Esri)": esriSat,
         "台灣電子地圖 (NLSC)": nlscEmap
       };
 
@@ -674,31 +913,11 @@
       mapMarkersGroup = L.layerGroup().addTo(map);
     }
 
-    function toggleMainView(viewType) {
-      currentMainView = viewType;
-      document.getElementById('btnCanvasView').classList.toggle('active', viewType === 'canvas');
-      document.getElementById('btnMapView').classList.toggle('active', viewType === 'map');
-
-      if (viewType === 'canvas') {
-        document.getElementById('canvasContainer').style.display = 'flex';
-        document.getElementById('mapView').style.display = 'none';
-        document.getElementById('viewHint').innerText = "💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板";
-      } else {
-        document.getElementById('canvasContainer').style.display = 'none';
-        document.getElementById('mapView').style.display = 'block';
-        document.getElementById('viewHint').innerText = "💡 東引戰術地圖模式（可於右上角選單切換衛星圖/街道圖）";
-        
-        initMap();
-        setTimeout(() => { map.invalidateSize(); }, 200);
-        updateMapMarkers();
-      }
-    }
-
-    /* 將輸入的 MGRS 8碼解析為 [lat, lng] */
+    /* MGRS 解析 */
     function parseMGRSToLatLng(e4Str, n4Str) {
       try {
         const band = document.getElementById('mgrsBand').value || 'R';
-        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TV';
+        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
         const e4 = e4Str.toString().trim().padStart(4, '0');
         const n4 = n4Str.toString().trim().padStart(4, '0');
         
@@ -722,10 +941,10 @@
 
       if (opLatLng) {
         const band = document.getElementById('mgrsBand').value || 'R';
-        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TV';
+        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
 
-        L.circleMarker(opLatLng, { radius: 9, color: '#ff9f43', fillColor: '#ff9f43', fillOpacity: 0.9 })
-          .bindPopup(`<b>觀測所 (OP)</b><br>MGRS: 51${band} ${sq} ${opE4} ${opN4}`)
+        L.circleMarker(opLatLng, { radius: 8, color: '#ff9f43', fillColor: '#ff9f43', fillOpacity: 0.9 })
+          .bindPopup(`<b>觀測所 (OP)</b><br>MGRS: 51${band} ${sq} ${opE4} ${opN4}<br>標高: ${getVal('opAlt')}m`)
           .addTo(mapMarkersGroup);
 
         const opEm = getVal('opE8') * 10;
@@ -736,8 +955,9 @@
           const gN4 = Math.round((opNm + g.y) / 10);
           const gLatLng = parseMGRSToLatLng(gE4, gN4);
           if (gLatLng) {
-            L.circleMarker(gLatLng, { radius: 7, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.9 })
-              .bindPopup(`<b>砲陣地 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}`)
+            // 使用真實地形比例 circle (半徑 5 米)
+            L.circle(gLatLng, { radius: 5, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.8 })
+              .bindPopup(`<b>砲陣地 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}<br>標高: ${g.alt}m`)
               .addTo(mapMarkersGroup);
           }
         });
@@ -747,13 +967,13 @@
           const tN4 = Math.round((opNm + t.y) / 10);
           const tLatLng = parseMGRSToLatLng(tE4, tN4);
           if (tLatLng) {
-            L.circleMarker(tLatLng, { radius: 7, color: '#00d2d3', fillColor: '#00d2d3', fillOpacity: 0.9 })
-              .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE4} ${tN4}`)
+            L.circleMarker(tLatLng, { radius: 6, color: '#00d2d3', fillColor: '#00d2d3', fillOpacity: 0.9 })
+              .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE4} ${tN4}<br>標高: ${t.alt}m`)
               .addTo(mapMarkersGroup);
           }
         });
 
-        map.setView(opLatLng, 14);
+        map.setView(opLatLng, 15);
       }
     }
 
@@ -762,15 +982,15 @@
       document.getElementById('tab1Btn').classList.toggle('active', tab === 'tab1');
       document.getElementById('tab2Btn').classList.toggle('active', tab === 'tab2');
       document.getElementById('tab3Btn').classList.toggle('active', tab === 'tab3');
+      document.getElementById('tab4Btn').classList.toggle('active', tab === 'tab4');
       
       document.getElementById('tab1Content').style.display = (tab === 'tab1') ? 'block' : 'none';
       document.getElementById('tab2Content').style.display = (tab === 'tab2') ? 'block' : 'none';
       document.getElementById('tab3Content').style.display = (tab === 'tab3') ? 'block' : 'none';
+      document.getElementById('tab4Content').style.display = (tab === 'tab4') ? 'block' : 'none';
 
-      if (tab === 'tab2' || tab === 'tab3') {
-        populateTargetSelects();
-        updateOTDataDisplay();
-      }
+      populateTargetSelects();
+      if (tab === 'tab2') updateOTDataDisplay();
       calculateAndDraw();
     }
 
@@ -781,6 +1001,25 @@
       document.getElementById('grid8Inputs').style.display = (mode === 'grid8') ? 'block' : 'none';
       document.getElementById('polarInputs').style.display = (mode === 'polar') ? 'block' : 'none';
       calculateAndDraw();
+    }
+
+    function setReindexMode(reindex) {
+      isReindexMode = reindex;
+      document.getElementById('btnReindex').classList.toggle('active', reindex);
+      document.getElementById('btnSpecialCorr').classList.toggle('active', !reindex);
+    }
+
+    function toggleDesignationMethod() {
+      const method = document.getElementById('targetDesignationMethod').value;
+      document.getElementById('knownPointSection').style.display = (method === 'known') ? 'block' : 'none';
+      document.getElementById('polarSection').style.display = (method === 'polar') ? 'block' : 'none';
+      document.getElementById('gridSection').style.display = (method === 'grid') ? 'block' : 'none';
+    }
+
+    function toggleSheafParams() {
+      const sheaf = document.getElementById('sheafTypeSelect').value;
+      const isDistributed = sheaf.includes('section') || sheaf.includes('traverse');
+      document.getElementById('windRow').style.display = isDistributed ? 'flex' : 'none';
     }
 
     function toggleDirInput() {
@@ -1002,31 +1241,36 @@
       globalGuns = [];
       globalTargets = [];
 
+      const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
       if (currentMode === 'grid8') {
-        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
         const opE = getVal('opE8') * 10;
         const opN = getVal('opN8') * 10;
+        const opAlt = getVal('opAlt');
+
         for (let i = 1; i <= 3; i++) {
           const mE = getVal(`m${i}E8`) * 10;
           const mN = getVal(`m${i}N8`) * 10;
-          globalGuns.push({ id: `#${i}`, x: mE - opE, y: mN - opN });
+          const mAlt = getVal(`m${i}Alt`);
+          globalGuns.push({ id: `#${i}`, x: mE - opE, y: mN - opN, alt: mAlt });
         }
-        for (let j = 1; j <= 4; j++) {
-          const tE = getVal(`t${j}E8`) * 10;
-          const tN = getVal(`t${j}N8`) * 10;
-          globalTargets.push({ id: `T${j}`, x: tE - opE, y: tN - opN });
-        }
+
+        const targetRows = document.querySelectorAll('.target-input-row');
+        targetRows.forEach(row => {
+          const tid = row.dataset.id;
+          const tE = (parseFloat(row.querySelector('.tE8').value) || 0) * 10;
+          const tN = (parseFloat(row.querySelector('.tN8').value) || 0) * 10;
+          const tAlt = parseFloat(row.querySelector('.tAlt').value) || 0;
+          globalTargets.push({ id: tid, x: tE - opE, y: tN - opN, alt: tAlt });
+        });
       } else {
-        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
-        const azT1 = getVal('azT1');
-        const distT1 = getVal('distT1');
-        const azM1 = getVal('azM1');
-        const distM1 = getVal('distM1');
+        const azT1 = getVal('azT1'), distT1 = getVal('distT1');
+        const azM1 = getVal('azM1'), distM1 = getVal('distM1');
         const radT = milToRad(azT1), radM = milToRad(azM1);
-        globalGuns.push({ id: '#1', x: distM1 * Math.sin(radM), y: distM1 * Math.cos(radM) });
-        globalGuns.push({ id: '#2', x: distM1 * Math.sin(radM) + 30, y: distM1 * Math.cos(radM) - 20 });
-        globalGuns.push({ id: '#3', x: distM1 * Math.sin(radM) + 60, y: distM1 * Math.cos(radM) - 40 });
-        globalTargets.push({ id: 'T1', x: distT1 * Math.sin(radT), y: distT1 * Math.cos(radT) });
+        globalGuns.push({ id: '#1', x: distM1 * Math.sin(radM), y: distM1 * Math.cos(radM), alt: 85 });
+        globalGuns.push({ id: '#2', x: distM1 * Math.sin(radM) + 30, y: distM1 * Math.cos(radM) - 20, alt: 85 });
+        globalGuns.push({ id: '#3', x: distM1 * Math.sin(radM) + 60, y: distM1 * Math.cos(radM) - 40, alt: 85 });
+        globalTargets.push({ id: 'T1', x: distT1 * Math.sin(radT), y: distT1 * Math.cos(radT), alt: 50 });
       }
 
       const gun1 = globalGuns.find(g => g.id === '#1');
@@ -1039,13 +1283,10 @@
       }
 
       if (gun1 && gun2 && gun3 && target1) {
-        const dx2t = target1.x - gun2.x;
-        const dy2t = target1.y - gun2.y;
+        const dx2t = target1.x - gun2.x, dy2t = target1.y - gun2.y;
         const dist2t = Math.hypot(dx2t, dy2t);
-        const ux = dist2t > 0 ? dx2t / dist2t : 0;
-        const uy = dist2t > 0 ? dy2t / dist2t : 1;
-        const nx = -uy;
-        const ny = ux;
+        const ux = dist2t > 0 ? dx2t / dist2t : 0, uy = dist2t > 0 ? dy2t / dist2t : 1;
+        const nx = -uy, ny = ux;
 
         const v1 = (gun1.x - gun2.x) * nx + (gun1.y - gun2.y) * ny;
         const v3 = (gun3.x - gun2.x) * nx + (gun3.y - gun2.y) * ny;
@@ -1058,14 +1299,21 @@
       globalGuns.forEach(g => maxDist = Math.max(maxDist, Math.hypot(g.x, g.y)));
       globalTargets.forEach(t => maxDist = Math.max(maxDist, Math.hypot(t.x, t.y)));
       correctionShots.forEach(s => maxDist = Math.max(maxDist, Math.hypot(s.x, s.y)));
-      wingShotRounds.forEach(round => {
-        round.shots.forEach(s => maxDist = Math.max(maxDist, Math.hypot(s.x, s.y)));
-      });
 
       maxDist = Math.max(maxDist, 1000);
       maxRange = Math.max(2000, Math.min(10000, Math.ceil((maxDist * 1.35) / 500) * 500));
 
       drawBoard();
+
+      // 動態更新諸元表格
+      const resHeader = document.getElementById('resultTableHeader');
+      const relHeader = document.getElementById('relativeTableHeader');
+      resHeader.innerHTML = '<th>砲位 \ 目標</th>';
+      relHeader.innerHTML = '<th>砲位 \ 目標</th>';
+      globalTargets.forEach(t => {
+        resHeader.innerHTML += `<th>${t.id}</th>`;
+        relHeader.innerHTML += `<th>${t.id}</th>`;
+      });
 
       const tbody = document.getElementById('resultTableBody');
       const relTbody = document.getElementById('relativeTableBody');
@@ -1082,8 +1330,9 @@
           const dist = Math.hypot(dx, dy);
           const az = radToMil(Math.atan2(dx, dy));
           const relMil = getRelativeMil(az);
+          const deltaH = target.alt - gun.alt;
 
-          tr.innerHTML += `<td><span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span></td>`;
+          tr.innerHTML += `<td><span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span><br><span class="val-alt">ΔH:${deltaH}m</span></td>`;
           relTr.innerHTML += `<td><span class="val-rel">${relMil.toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span></td>`;
 
           if (gun.id === '#1') {
@@ -1121,9 +1370,9 @@
     }
 
     function populateTargetSelects() {
-      ['corrTargetSelect', 'wingTargetSelect'].forEach(id => {
+      ['corrTargetSelect', 'wingTargetSelect', 'knownPointSelect'].forEach(id => {
         const select = document.getElementById(id);
-        if(!select) return;
+        if (!select) return;
         select.innerHTML = '';
         globalTargets.forEach(t => {
           const opt = document.createElement('option');
@@ -1221,8 +1470,7 @@
       }
 
       const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[1];
-      const dxM2 = m2FinalHit.x - m2Gun.x;
-      const dyM2 = m2FinalHit.y - m2Gun.y;
+      const dxM2 = m2FinalHit.x - m2Gun.x, dyM2 = m2FinalHit.y - m2Gun.y;
       const azM2Final = Math.atan2(dxM2, dyM2);
       const distM2Final = Math.hypot(dxM2, dyM2);
 
@@ -1316,6 +1564,154 @@
       });
     }
 
+    /* 執行新目標效力射計算（亞倫教案演算法） */
+    function executeEffectFire() {
+      const method = document.getElementById('targetDesignationMethod').value;
+      const targetName = document.getElementById('newTargetName').value.trim() || 'T_New';
+      
+      let newX = 0, newY = 0, newAlt = 50;
+      const opE = (parseFloat(document.getElementById('opE8').value) || 0) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 0) * 10;
+
+      if (method === 'known') {
+        const baseId = document.getElementById('knownPointSelect').value;
+        const baseTarget = globalTargets.find(t => t.id === baseId);
+        if (!baseTarget) return;
+
+        const azOT = parseFloat(document.getElementById('kpAzOT').value) || 0;
+        const radOT = milToRad(azOT);
+
+        const dirSign = document.getElementById('kpDirSign').value === 'right' ? 1 : -1;
+        const shiftW = (parseFloat(document.getElementById('kpShiftDir').value) || 0) * dirSign;
+
+        const distSign = document.getElementById('kpDistSign').value === 'add' ? 1 : -1;
+        const shiftR = (parseFloat(document.getElementById('kpShiftDist').value) || 0) * distSign;
+
+        const deltaX = shiftR * Math.sin(radOT) + shiftW * Math.cos(radOT);
+        const deltaY = shiftR * Math.cos(radOT) - shiftW * Math.sin(radOT);
+
+        newX = baseTarget.x + deltaX;
+        newY = baseTarget.y + deltaY;
+        newAlt = baseTarget.alt;
+
+        // 檢查 400 密位警告
+        const shiftMil = Math.atan2(shiftW, Math.hypot(baseTarget.x, baseTarget.y)) * 6400 / (2 * Math.PI);
+        document.getElementById('kpWarning').style.display = (Math.abs(shiftMil) > 400) ? 'block' : 'none';
+
+      } else if (method === 'polar') {
+        const azOT = parseFloat(document.getElementById('polarNewAz').value) || 0;
+        const distOT = parseFloat(document.getElementById('polarNewDist').value) || 1000;
+        newAlt = parseFloat(document.getElementById('polarNewAlt').value) || 50;
+        const radOT = milToRad(azOT);
+
+        newX = distOT * Math.sin(radOT);
+        newY = distOT * Math.cos(radOT);
+
+      } else if (method === 'grid') {
+        const gE = (parseFloat(document.getElementById('gridNewE').value) || 0) * 10;
+        const gN = (parseFloat(document.getElementById('gridNewN').value) || 0) * 10;
+        newAlt = parseFloat(document.getElementById('gridNewAlt').value) || 50;
+
+        newX = gE - opE;
+        newY = gN - opN;
+      }
+
+      // 自動將新目標加入動態目標池（若不存在）
+      const e8Str = Math.round((opE + newX) / 10).toString().padStart(4, '0');
+      const n8Str = Math.round((opN + newY) / 10).toString().padStart(4, '0');
+      
+      let existingTarget = globalTargets.find(t => t.id === targetName);
+      if (!existingTarget) {
+        addNewTargetRow(targetName, e8Str, n8Str, newAlt);
+      }
+
+      // 計算各砲針對新目標的效力射諸元
+      const sheaf = document.getElementById('sheafTypeSelect').value;
+      const windFromRight = document.getElementById('windDirSelect').value === 'left_to_right';
+      const tbody = document.getElementById('effectFireTableBody');
+      tbody.innerHTML = '';
+
+      let turnText = '';
+      let cmdText = '';
+
+      const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[0];
+      const mtDistM2 = Math.hypot(newX - m2Gun.x, newY - m2Gun.y);
+
+      globalGuns.forEach(gun => {
+        let targetX = newX, targetY = newY;
+
+        // 分佈射擊的射擊點位偏移演算 (依教案)
+        if (sheaf === 'section_sheaf') {
+          // 分段射擊：#2砲射擊點為目標中心向右(左)50m
+          const shiftDir = windFromRight ? 50 : -50;
+          targetX += shiftDir;
+        } else if (sheaf === 'traverse_4') {
+          // 4發橫射：#2砲向右(左)50m，#1/#3砲各左右100m
+          const shiftDir = windFromRight ? 50 : -50;
+          targetX += shiftDir;
+          if (gun.id === '#1') targetX += 100;
+          if (gun.id === '#3') targetX -= 100;
+        } else if (sheaf === 'traverse_6') {
+          // 6發橫射：#2砲向右(左)25m，#1/#3砲各左右100m
+          const shiftDir = windFromRight ? 25 : -25;
+          targetX += shiftDir;
+          if (gun.id === '#1') targetX += 100;
+          if (gun.id === '#3') targetX -= 100;
+        } else if (sheaf === 'search_2' || sheaf === 'search_6') {
+          // 縱射：起射點向上/下 25m
+          targetY += 25;
+        }
+
+        const dx = targetX - gun.x, dy = targetY - gun.y;
+        const dist = Math.hypot(dx, dy);
+        let az = radToMil(Math.atan2(dx, dy));
+        const deltaH = newAlt - gun.alt;
+
+        // 若為不重標原向，套用特別修正量 (例)
+        if (!isReindexMode) {
+          az = (az + 10) % 6400; // 模擬特別修正量疊加
+        }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:bold; color:#ff4757;">${gun.id}</td>
+          <td class="val-az">${Math.round(az).toString().padStart(4, '0')}</td>
+          <td class="val-dist">${Math.round(dist)}m</td>
+          <td class="val-alt">ΔH:${deltaH}m</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 依教案公式計算手轉數
+      const mtK = mtDistM2 / 1000;
+      if (sheaf === 'section_sheaf') {
+        const turns = (6.66 / mtK).toFixed(1);
+        turnText = `方向機轉移量 = 6.66 ÷ (MT/1000) = 6.66 ÷ ${mtK.toFixed(2)} = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發分段射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發分段射、向左 ${turns} 轉 3 發、準備好放！`;
+      } else if (sheaf === 'traverse_4') {
+        const turns = (2 / mtK).toFixed(1);
+        turnText = `方向機轉移量 = 2 ÷ (MT/1000) = 2 ÷ ${mtK.toFixed(2)} = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲4發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲4發橫射、向左 ${turns} 轉 么發、準備好放！`;
+      } else if (sheaf === 'traverse_6') {
+        const turns = (3.33 / mtK).toFixed(1);
+        turnText = `方向機轉移量 = 3.33 ÷ (MT/1000) = 3.33 ÷ ${mtK.toFixed(2)} = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
+      } else if (sheaf.includes('search')) {
+        turnText = `高低機轉移量 = (兩不同距離射角差) × 2 轉 = <strong>約 3 轉 (每轉 0.5 度)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`;
+      } else {
+        turnText = `固定射擊模式：不需要轉動方向機/高低機手轉數。`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：全排集火效力射、目標編號 ${targetName}\n射擊口令：全排榴彈、效力射準備好放！`;
+      }
+
+      document.getElementById('handwheelTurnsDisplay').innerHTML = turnText;
+      document.getElementById('commandOutputBox').innerText = cmdText;
+
+      calculateAndDraw();
+    }
+
+    // 程式啟動初始化
+    initDefaultTargets();
     calculateAndDraw();
   </script>
 </body>
