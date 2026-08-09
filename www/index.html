@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>M10 射擊圖板模擬與落彈觀測修正系統</title>
+  <title>M10 射擊圖板與真實地圖結合系統</title>
+  
+  <!-- 引入 Leaflet.js 地圖引擎 CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <style>
     * {
       box-sizing: border-box;
@@ -18,11 +22,10 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
-      height: 100dvh; /* 相容行動端動態高度 */
+      height: 100dvh;
       overflow: hidden;
     }
 
-    /* 桌面端預設：左右分格；行動端：上下分格 */
     @media (min-width: 850px) {
       body {
         flex-direction: row;
@@ -40,7 +43,6 @@
       }
     }
 
-    /* 上方/右側 Canvas 圖板區域 */
     .main-content {
       flex: 1;
       display: flex;
@@ -59,7 +61,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      touch-action: none; /* 禁止手機預設滾動，供 Canvas 手勢接管 */
+      touch-action: none;
     }
     canvas {
       background-color: #172026;
@@ -68,6 +70,44 @@
       max-width: 98vw;
       max-height: 98vw;
     }
+
+    /* Leaflet 地圖容器 */
+    #mapView {
+      width: 100%;
+      height: 100%;
+      display: none; /* 預設先顯示 Canvas 圖板 */
+      z-index: 5;
+    }
+
+    /* 視圖切換控制浮動列 */
+    .view-toggle-bar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 20;
+      display: flex;
+      background: rgba(30, 36, 43, 0.85);
+      border: 1px solid #00a8ff;
+      border-radius: 6px;
+      padding: 3px;
+      gap: 4px;
+      backdrop-filter: blur(4px);
+    }
+    .v-btn {
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      font-weight: bold;
+      background: transparent;
+      color: #8395a7;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .v-btn.active {
+      background: #00a8ff;
+      color: #fff;
+    }
+
     .board-hint {
       position: absolute;
       bottom: 8px;
@@ -78,9 +118,9 @@
       border-radius: 12px;
       pointer-events: none;
       text-align: center;
+      z-index: 15;
     }
 
-    /* 控制面板 */
     .sidebar {
       width: 100%;
       height: 60vh;
@@ -102,7 +142,6 @@
       text-align: center;
     }
 
-    /* 分頁頁籤 */
     .tab-header {
       display: flex;
       background-color: #28313e;
@@ -112,7 +151,7 @@
     }
     .tab-btn {
       flex: 1;
-      padding: 10px 2px; /* 加大觸控面積 */
+      padding: 10px 2px;
       border: none;
       background-color: transparent;
       color: #8395a7;
@@ -126,7 +165,6 @@
       color: #fff;
     }
 
-    /* 模式選擇鈕 */
     .mode-switch {
       display: flex;
       background-color: #121619;
@@ -179,7 +217,7 @@
     }
     input[type="number"], input[type="text"], select {
       width: 100px;
-      padding: 6px 8px; /* 手機上更好點擊 */
+      padding: 6px 8px;
       border-radius: 4px;
       border: 1px solid #485460;
       background-color: #1e242b;
@@ -200,7 +238,6 @@
       text-align: center;
     }
 
-    /* 轉盤與視角控制項區 */
     .dial-control-group {
       background-color: #1a222a;
       border: 1px solid #00a8ff;
@@ -241,14 +278,13 @@
       color: #fff;
     }
 
-    /* 諸元表格顯示區 */
     .result-box {
       background-color: #28313e;
       border: 1px solid #e1b12c;
       border-radius: 6px;
       padding: 8px;
       margin-bottom: 8px;
-      overflow-x: auto; /* 避免表格撐爆面板 */
+      overflow-x: auto;
     }
     .result-title {
       color: #e1b12c;
@@ -279,14 +315,25 @@
 <body>
 
   <div class="main-content">
+    <!-- 切換視圖控制項 -->
+    <div class="view-toggle-bar">
+      <button class="v-btn active" id="btnCanvasView" onclick="toggleMainView('canvas')">M10 圖板</button>
+      <button class="v-btn" id="btnMapView" onclick="toggleMainView('map')">真實地圖 (NLSC)</button>
+    </div>
+
+    <!-- 傳統 Canvas 繪圖區域 -->
     <div class="canvas-container" id="canvasContainer">
       <canvas id="boardCanvas" width="760" height="760"></canvas>
     </div>
-    <div class="board-hint">💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板</div>
+
+    <!-- Leaflet 地圖容器 -->
+    <div id="mapView"></div>
+
+    <div class="board-hint" id="viewHint">💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板</div>
   </div>
 
   <div class="sidebar">
-    <h1>M10 射擊圖板模擬系統</h1>
+    <h1>M10 射擊圖板與真實地圖系統</h1>
 
     <div class="tab-header">
       <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1. 諸元圖解</button>
@@ -554,13 +601,15 @@
 
   </div>
 
+  <!-- 引入 Leaflet.js 地圖庫 -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script>
     const canvas = document.getElementById('boardCanvas');
     const ctx = canvas.getContext('2d');
     const container = document.getElementById('canvasContainer');
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    
     const fixedBoardRadius = canvas.width / 2 - 55;
 
     let currentTab = 'tab1';
@@ -570,7 +619,6 @@
     let contentZoomScale = 1.0; 
     let panOffsetX = 0; 
     let panOffsetY = 0; 
-
     let maxRange = 3000;       
 
     let globalGuns = [];       
@@ -580,6 +628,127 @@
 
     let baseAzimuthM2T1 = 0;
     const shotColors = ['#ff9f43', '#f368e0', '#ffda79', '#00d2d3', '#54a0ff', '#5f27cd'];
+
+    /* Leaflet 地圖變數 */
+    let map = null;
+    let mapMarkersGroup = null;
+    let currentMainView = 'canvas';
+
+    /* 初始化 Leaflet 地圖 (介接內政部國土測繪中心 NLSC 免費圖資) */
+    function initMap() {
+      if (map) return;
+
+      // 預設中心點設為湖口台地附近的 TWD97/WGS84 座標
+      map = L.map('mapView', {
+        center: [24.8708, 121.0660],
+        zoom: 14,
+        zoomControl: true
+      });
+
+      // 1. 通用電子地圖 (EMAP)
+      const emap = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: '© 內政部國土測繪中心'
+      });
+
+      // 2. 正射影像圖 (衛星圖 PHOTO2)
+      const photo = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: '© 內政部國土測繪中心'
+      });
+
+      emap.addTo(map);
+
+      // 地圖圖層切換選單
+      const baseMaps = {
+        "通用電子地圖": emap,
+        "正射影像 (衛星圖)": photo
+      };
+      L.control.layers(baseMaps).addTo(map);
+
+      mapMarkersGroup = L.layerGroup().addTo(map);
+    }
+
+    function toggleMainView(viewType) {
+      currentMainView = viewType;
+      document.getElementById('btnCanvasView').classList.toggle('active', viewType === 'canvas');
+      document.getElementById('btnMapView').classList.toggle('active', viewType === 'map');
+
+      if (viewType === 'canvas') {
+        document.getElementById('canvasContainer').style.display = 'flex';
+        document.getElementById('mapView').style.display = 'none';
+        document.getElementById('viewHint').innerText = "💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜下方滑桿旋轉圖板";
+      } else {
+        document.getElementById('canvasContainer').style.display = 'none';
+        document.getElementById('mapView').style.display = 'block';
+        document.getElementById('viewHint').innerText = "💡 真實電子地圖模式（資料來源：內政部國土測繪中心）";
+        
+        initMap();
+        setTimeout(() => { map.invalidateSize(); }, 200);
+        updateMapMarkers();
+      }
+    }
+
+    /* 將 TWD97 二度分帶 (X, Y) 轉成 WGS84 (lat, lng) 概略轉換公式 (用於地圖定位) */
+    function twd97ToLatLng(x, y) {
+      const a = 6378137.0, b = 6356752.3142451;
+      const k0 = 0.9999, dx = 250000;
+      const lon0 = 121 * Math.PI / 180;
+      const e = Math.sqrt(1 - (b / a) * (b / a));
+      const e2 = e * e / (1 - e * e);
+      const dy = y;
+      const x_pt = x - dx;
+      const M = dy / k0;
+      const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * Math.pow(e2, 3) / 256));
+      const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+      
+      const phi1 = mu + (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32) * Math.sin(2 * mu)
+        + (21 * e1 * e1 / 16 - 55 * Math.pow(e1, 4) / 32) * Math.sin(4 * mu);
+      
+      const N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) * Math.sin(phi1));
+      const T1 = Math.tan(phi1) * Math.tan(phi1);
+      const C1 = e2 * Math.cos(phi1) * Math.cos(phi1);
+      const R1 = a * (1 - e2) / Math.pow(1 - e2 * Math.sin(phi1) * Math.sin(phi1), 1.5);
+      const D = x_pt / (N1 * k0);
+
+      const lat = phi1 - (N1 * Math.tan(phi1) / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * e2) * Math.pow(D, 4) / 24);
+      const lng = lon0 + (D - (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6) / Math.cos(phi1);
+
+      return [lat * 180 / Math.PI, lng * 180 / Math.PI];
+    }
+
+    /* 將最新陣地與目標更新到 Leaflet 地圖上 */
+    function updateMapMarkers() {
+      if (!map || !mapMarkersGroup) return;
+      mapMarkersGroup.clearLayers();
+
+      const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+      const opE = getVal('opE8') * 10;
+      const opN = getVal('opN8') * 10;
+
+      if (opE > 0 && opN > 0) {
+        const opLatLng = twd97ToLatLng(opE, opN);
+        L.circleMarker(opLatLng, { radius: 8, color: '#ff9f43', fillColor: '#ff9f43', fillOpacity: 0.9 })
+          .bindPopup('<b>觀測所 (OP)</b>')
+          .addTo(mapMarkersGroup);
+
+        globalGuns.forEach(g => {
+          const latLng = twd97ToLatLng(opE + g.x, opN + g.y);
+          L.circleMarker(latLng, { radius: 7, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.9 })
+            .bindPopup(`<b>砲陣地 ${g.id}</b>`)
+            .addTo(mapMarkersGroup);
+        });
+
+        globalTargets.forEach(t => {
+          const latLng = twd97ToLatLng(opE + t.x, opN + t.y);
+          L.circleMarker(latLng, { radius: 7, color: '#00d2d3', fillColor: '#00d2d3', fillOpacity: 0.9 })
+            .bindPopup(`<b>目標 ${t.id}</b>`)
+            .addTo(mapMarkersGroup);
+        });
+
+        map.setView(opLatLng, 14);
+      }
+    }
 
     function switchTab(tab) {
       currentTab = tab;
@@ -667,7 +836,6 @@
       calculateAndDraw();
     }
 
-    /* 支援滑鼠與雙指觸控縮放/拖曳 */
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -703,7 +871,6 @@
     });
     window.addEventListener('mouseup', () => { isDragging = false; });
 
-    /* 手機觸控事件 (Touch Events) 支援單指平移與雙指 Pinch 縮放 */
     container.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         isDragging = true;
@@ -943,6 +1110,7 @@
       });
 
       if (currentTab === 'tab2') renderCorrectionResultTable();
+      if (currentMainView === 'map') updateMapMarkers();
     }
 
     function populateTargetSelects() {
