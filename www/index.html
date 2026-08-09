@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>M10 射擊圖板與指揮系統</title>
   
-  <!-- Leaflet 地圖 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- jsPDF & html2canvas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
@@ -132,7 +129,6 @@
       max-height: 96vw;
     }
 
-    /* 修復地圖黑屏：明確定高與 flex */
     #mapViewContainer {
       width: 100%;
       height: 100%;
@@ -1919,70 +1915,89 @@
       });
     }
 
-    /* 破浪PDF 生成引擎 (具備高防護容錯機制) */
-    async function generatePoLangPDF() {
-      try {
-        alert("🚀 破浪PDF 產製中，產製完成後將自動下載檔案至手機 Download 資料夾...");
+    /* 全原生相容 PDF / 系統列印輸出引擎 */
+    function generatePoLangPDF() {
+      const canvasImg = canvas.toDataURL('image/png');
+      const band = document.getElementById('mgrsBand').value || 'R';
+      const sq = document.getElementById('mgrsSq').value || 'TK';
+      const opE = document.getElementById('opE8').value || '4999';
+      const opN = document.getElementById('opN8').value || '1962';
+      const opAlt = document.getElementById('opAlt').value || '100';
 
-        const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || null);
-        if (!jsPDFLib) {
-          throw new Error("PDF 組件初始化中，請稍後再試。");
-        }
+      let targetsListHtml = '';
+      globalTargets.forEach(t => {
+        targetsListHtml += `<li><b>目標 ${t.id}</b>: 相對OP (E: ${Math.round(t.x)}m, N: ${Math.round(t.y)}m) | 標高: ${t.alt}m</li>`;
+      });
 
-        const pdf = new jsPDFLib('p', 'mm', 'a4');
-        
-        pdf.setFontSize(16);
-        pdf.text("PoLang Tactical FDC Report (M10)", 15, 15);
-        
-        pdf.setFontSize(10);
-        const band = document.getElementById('mgrsBand').value || 'R';
-        const sq = document.getElementById('mgrsSq').value || 'TK';
-        const opE = document.getElementById('opE8').value || '4999';
-        const opN = document.getElementById('opN8').value || '1962';
-        const opAlt = document.getElementById('opAlt').value || '100';
-
-        pdf.text(`Grid Header: 51${band} ${sq} | Time: ${new Date().toLocaleString()}`, 15, 22);
-        pdf.text(`OP Position: 51${band} ${sq} ${opE} ${opN} (Alt: ${opAlt}m)`, 15, 27);
-
-        const canvasImg = canvas.toDataURL('image/png');
-        pdf.addImage(canvasImg, 'PNG', 15, 32, 180, 180);
-
-        let yPos = 218;
-        pdf.text("[Target List]", 15, yPos);
-        yPos += 5;
-        globalTargets.forEach(t => {
-          pdf.text(`* Target ${t.id}: Rel OP (E:${Math.round(t.x)}m, N:${Math.round(t.y)}m) | Alt: ${t.alt}m`, 15, yPos);
-          yPos += 5;
+      let historyHtml = '';
+      effectFireHistory.forEach(item => {
+        let gunRows = '';
+        item.guns.forEach(g => {
+          gunRows += `<tr><td>${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
         });
+        historyHtml += `
+          <div style="border:1px solid #333; padding:8px; margin-bottom:10px; page-break-inside:avoid;">
+            <div style="font-weight:bold;">任務 #${item.id} [${item.targetId}] - ${item.sheafName}</div>
+            <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
+              <thead><tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
+              <tbody>${gunRows}</tbody>
+            </table>
+            <div style="font-size:11px;">${item.turnsText}</div>
+            <div style="font-family:monospace; font-size:11px; margin-top:4px; white-space:pre-wrap;">${item.cmdText}</div>
+          </div>
+        `;
+      });
 
-        pdf.addPage();
-        pdf.setFontSize(14);
-        pdf.text("[Effect Fire Mission Log & Commands]", 15, 15);
-
-        yPos = 25;
-        effectFireHistory.forEach((item) => {
-          if (yPos > 270) { pdf.addPage(); yPos = 15; }
-          pdf.setFontSize(10);
-          pdf.text(`Mission #${item.id} [${item.targetId}] - ${item.sheafName}`, 15, yPos);
-          yPos += 5;
-
-          item.guns.forEach(g => {
-            pdf.text(`   ${g.gunId} Gun: Bearing ${g.az.toString().padStart(4, '0')} mil | Dist ${g.dist}m | dH ${g.deltaH}m`, 15, yPos);
-            yPos += 4;
-          });
-
-          pdf.setFontSize(8);
-          pdf.text(`   Cmd: ${item.cmdText.replace(/\n/g, ' / ')}`, 15, yPos);
-          yPos += 7;
-        });
-
-        const fileName = `PoLang_Report_${new Date().toISOString().slice(0,10)}.pdf`;
-        pdf.save(fileName);
-        alert(`✅ 破浪PDF 產製成功！已下載為 ${fileName}`);
-
-      } catch (err) {
-        alert(`產製 PDF 時發生錯誤：${err.message}`);
+      const printWin = window.open('', '_blank');
+      if (!printWin) {
+        alert("⚠️ 系統彈出視窗被攔截，請允許彈出視窗後再試一次！");
+        return;
       }
+
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>破浪戰術射擊指揮紀錄報告 (M10)</title>
+          <style>
+            body { font-family: sans-serif; padding: 15px; color: #000; background: #fff; }
+            h2 { margin-bottom: 5px; }
+            .meta-info { font-size: 13px; margin-bottom: 15px; }
+            .img-container { text-align: center; margin: 15px 0; }
+            .img-container img { max-width: 80%; border: 1px solid #000; border-radius: 50%; }
+            ul { font-size: 13px; line-height: 1.5; }
+            @media print {
+              body { padding: 0; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>破浪戰術射擊指揮紀錄報告 (M10)</h2>
+          <div class="meta-info">
+            <b>網格頭標:</b> 51${band} ${sq} | <b>產製時間:</b> ${new Date().toLocaleString()}<br>
+            <b>觀測所 (OP):</b> 51${band} ${sq} ${opE} ${opN} (標高: ${opAlt}m)
+          </div>
+          
+          <div class="img-container">
+            <img src="${canvasImg}" />
+          </div>
+
+          <h3>【目標點座標清單】</h3>
+          <ul>${targetsListHtml}</ul>
+
+          <h3 style="page-break-before:always; margin-top:20px;">【效力射歷史履歷與口令表】</h3>
+          ${historyHtml || '<div>尚無效力射歷史紀錄</div>'}
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
     }
 
     initDefaultTargets();
