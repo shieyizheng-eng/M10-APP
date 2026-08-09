@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>M10 射擊圖板與真實地圖系統</title>
+  <title>M10 射擊圖板 (東引 MGRS 戰術版)</title>
   
-  <!-- 引入 Leaflet.js 地圖引擎 CSS -->
+  <!-- 引入 Leaflet 地圖 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
@@ -305,7 +305,7 @@
   <div class="main-content">
     <div class="view-toggle-bar">
       <button class="v-btn active" id="btnCanvasView" onclick="toggleMainView('canvas')">M10 圖板</button>
-      <button class="v-btn" id="btnMapView" onclick="toggleMainView('map')">真實地圖</button>
+      <button class="v-btn" id="btnMapView" onclick="toggleMainView('map')">東引真實地圖</button>
     </div>
 
     <div class="canvas-container" id="canvasContainer">
@@ -318,7 +318,7 @@
   </div>
 
   <div class="sidebar">
-    <h1>M10 射擊圖板與真實地圖系統</h1>
+    <h1>M10 射擊圖板 (東引戰術專用版)</h1>
 
     <div class="tab-header">
       <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1. 諸元圖解</button>
@@ -357,42 +357,60 @@
 
     <div id="tab1Content">
       <div class="mode-switch" style="margin: 6px 0;">
-        <button class="mode-btn active" id="btn8Grid" onclick="switchMode('grid8')">8碼座標模式</button>
+        <button class="mode-btn active" id="btn8Grid" onclick="switchMode('grid8')">MGRS 8碼模式</button>
         <button class="mode-btn" id="btnPolar" onclick="switchMode('polar')">極座標模式</button>
       </div>
 
       <div id="grid8Inputs">
         <div class="input-group">
-          <div class="section-title">觀測所 (OP) 8碼座標 (以新竹湖口台地為基準)</div>
+          <div class="section-title">MGRS 網格區頭標設定</div>
+          <div class="input-row">
+            <label> Zone / 緯度帶 / 100km區:</label>
+            <div class="grid-input-row">
+              <input type="text" id="mgrsZone" value="51" readonly style="width:35px; text-align:center; background:#121619;">
+              <select id="mgrsBand" style="width:50px; text-align:center;">
+                <option value="R" selected>R</option>
+                <option value="Q">Q</option>
+              </select>
+              <input type="text" id="mgrsSq" value="TV" maxlength="2" style="width:45px; text-align:center; text-transform:uppercase;">
+            </div>
+          </div>
+          <div style="font-size: 0.7rem; color: #8395a7; margin-top: 4px;">
+            💡 註：預設 `51R TV` 為台灣馬祖東引島專用網格區。
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="section-title">觀測所 (OP) MGRS 8碼座標</div>
           <div class="input-row">
             <label>東(E) / 北(N) 4碼:</label>
             <div class="grid-input-row">
-              <input type="text" id="opE8" value="2500" maxlength="4" inputmode="numeric">
+              <input type="text" id="opE8" value="4900" maxlength="4" inputmode="numeric">
               <span>/</span>
-              <input type="text" id="opN8" value="2750" maxlength="4" inputmode="numeric">
+              <input type="text" id="opN8" value="1800" maxlength="4" inputmode="numeric">
             </div>
           </div>
         </div>
 
         <div class="input-group">
-          <div class="section-title">砲陣地座標 (8碼公尺制)</div>
+          <div class="section-title">砲陣地 MGRS 8碼座標</div>
           <div class="input-row"><label>#1 砲:</label>
-            <div class="grid-input-row"><input type="text" id="m1E8" value="2510" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="2720" maxlength="4" inputmode="numeric"></div>
+            <div class="grid-input-row"><input type="text" id="m1E8" value="4910" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="1770" maxlength="4" inputmode="numeric"></div>
           </div>
           <div class="input-row"><label>#2 砲 (基準):</label>
-            <div class="grid-input-row"><input type="text" id="m2E8" value="2510" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="2718" maxlength="4" inputmode="numeric"></div>
+            <div class="grid-input-row"><input type="text" id="m2E8" value="4910" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="1768" maxlength="4" inputmode="numeric"></div>
           </div>
           <div class="input-row"><label>#3 砲:</label>
-            <div class="grid-input-row"><input type="text" id="m3E8" value="2507" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="2719" maxlength="4" inputmode="numeric"></div>
+            <div class="grid-input-row"><input type="text" id="m3E8" value="4907" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="1769" maxlength="4" inputmode="numeric"></div>
           </div>
         </div>
 
         <div class="input-group">
-          <div class="section-title">目標點座標 (T1 ~ T4)</div>
-          <div class="input-row"><label>目標 T1:</label><div class="grid-input-row"><input type="text" id="t1E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t1N8" value="2881" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T2:</label><div class="grid-input-row"><input type="text" id="t2E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t2N8" value="2871" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T3:</label><div class="grid-input-row"><input type="text" id="t3E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t3N8" value="2861" maxlength="4" inputmode="numeric"></div></div>
-          <div class="input-row"><label>目標 T4:</label><div class="grid-input-row"><input type="text" id="t4E8" value="2445" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t4N8" value="2851" maxlength="4" inputmode="numeric"></div></div>
+          <div class="section-title">目標點 MGRS 8碼座標 (T1 ~ T4)</div>
+          <div class="input-row"><label>目標 T1:</label><div class="grid-input-row"><input type="text" id="t1E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t1N8" value="1931" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T2:</label><div class="grid-input-row"><input type="text" id="t2E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t2N8" value="1921" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T3:</label><div class="grid-input-row"><input type="text" id="t3E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t3N8" value="1911" maxlength="4" inputmode="numeric"></div></div>
+          <div class="input-row"><label>目標 T4:</label><div class="grid-input-row"><input type="text" id="t4E8" value="4845" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="t4N8" value="1901" maxlength="4" inputmode="numeric"></div></div>
         </div>
       </div>
 
@@ -586,7 +604,9 @@
 
   </div>
 
+  <!-- 引入 Leaflet 地圖與 MGRS 解算庫 -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mgrs@2.0.0/dist/mgrs.min.js"></script>
 
   <script>
     const canvas = document.getElementById('boardCanvas');
@@ -617,50 +637,37 @@
     let mapMarkersGroup = null;
     let currentMainView = 'canvas';
 
-    /* 多重圖層初始化（內政部 NLSC + OSM + Esri 衛星圖） */
+    /* 初始化地圖：中心點對準馬祖東引島 (26.368, 120.493) */
     function initMap() {
       if (map) return;
 
-      // 預設中心點：新竹湖口台地軍事訓練場附近 [lat, lng]
       map = L.map('mapView', {
-        center: [24.8708, 121.0660],
+        center: [26.368, 120.493],
         zoom: 14,
         zoomControl: true
       });
 
-      // 1. OpenStreetMap 全球標準地圖 (極其穩定)
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
       });
 
-      // 2. Esri 全球正射影像 (高解析度衛星圖)
       const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 18,
         attribution: 'Tiles © Esri'
       });
 
-      // 3. 台灣內政部國土測繪中心 - 通用電子地圖
       const nlscEmap = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', {
         maxZoom: 19,
         attribution: '© 內政部國土測繪中心'
       });
 
-      // 4. 台灣內政部國土測繪中心 - 衛星正射影像
-      const nlscPhoto = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/PHOTO2/default/GoogleMapsCompatible/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: '© 內政部國土測繪中心'
-      });
-
-      // 預設先載入 OSM 全球地圖
       osm.addTo(map);
 
-      // 右上角圖層選擇選單
       const baseMaps = {
         "全球街道圖 (OSM)": osm,
-        "全球衛星圖 (Esri)": esriSat,
-        "台灣電子地圖 (NLSC)": nlscEmap,
-        "台灣正射影像 (NLSC)": nlscPhoto
+        "全球高解析衛星圖 (Esri)": esriSat,
+        "台灣電子地圖 (NLSC)": nlscEmap
       };
 
       L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -679,7 +686,7 @@
       } else {
         document.getElementById('canvasContainer').style.display = 'none';
         document.getElementById('mapView').style.display = 'block';
-        document.getElementById('viewHint').innerText = "💡 真實地圖模式（可使用右上角選單切換衛星圖/街道圖）";
+        document.getElementById('viewHint').innerText = "💡 東引戰術地圖模式（可於右上角選單切換衛星圖/街道圖）";
         
         initMap();
         setTimeout(() => { map.invalidateSize(); }, 200);
@@ -687,32 +694,20 @@
       }
     }
 
-    /* 將 TWD97 8碼二度分帶 (X, Y) 正確對齊至台灣陸地上 (基準點為湖口台地 2500, 2750) */
-    function twd97ToLatLng(x, y) {
-      const a = 6378137.0, b = 6356752.3142451;
-      const k0 = 0.9999, dx = 250000;
-      const lon0 = 121 * Math.PI / 180;
-      const e = Math.sqrt(1 - (b / a) * (b / a));
-      const e2 = e * e / (1 - e * e);
-      const dy = y;
-      const x_pt = x - dx;
-      const M = dy / k0;
-      const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * Math.pow(e2, 3) / 256));
-      const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
-      
-      const phi1 = mu + (3 * e1 / 2 - 27 * Math.pow(e1, 3) / 32) * Math.sin(2 * mu)
-        + (21 * e1 * e1 / 16 - 55 * Math.pow(e1, 4) / 32) * Math.sin(4 * mu);
-      
-      const N1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) * Math.sin(phi1));
-      const T1 = Math.tan(phi1) * Math.tan(phi1);
-      const C1 = e2 * Math.cos(phi1) * Math.cos(phi1);
-      const R1 = a * (1 - e2) / Math.pow(1 - e2 * Math.sin(phi1) * Math.sin(phi1), 1.5);
-      const D = x_pt / (N1 * k0);
-
-      const lat = phi1 - (N1 * Math.tan(phi1) / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * e2) * Math.pow(D, 4) / 24);
-      const lng = lon0 + (D - (1 + 2 * T1 + C1) * Math.pow(D, 3) / 6) / Math.cos(phi1);
-
-      return [lat * 180 / Math.PI, lng * 180 / Math.PI];
+    /* 將輸入的 MGRS 8碼解析為 [lat, lng] */
+    function parseMGRSToLatLng(e4Str, n4Str) {
+      try {
+        const band = document.getElementById('mgrsBand').value || 'R';
+        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TV';
+        const e4 = e4Str.toString().trim().padStart(4, '0');
+        const n4 = n4Str.toString().trim().padStart(4, '0');
+        
+        const fullMgrs = `51${band}${sq}${e4}${n4}`;
+        const point = mgrs.toPoint(fullMgrs);
+        return [point[1], point[0]];
+      } catch (e) {
+        return null;
+      }
     }
 
     function updateMapMarkers() {
@@ -720,27 +715,42 @@
       mapMarkersGroup.clearLayers();
 
       const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
-      const opE = getVal('opE8') * 100;
-      const opN = getVal('opN8') * 100;
+      const opE4 = document.getElementById('opE8').value;
+      const opN4 = document.getElementById('opN8').value;
+      
+      const opLatLng = parseMGRSToLatLng(opE4, opN4);
 
-      if (opE > 0 && opN > 0) {
-        const opLatLng = twd97ToLatLng(opE, opN);
+      if (opLatLng) {
+        const band = document.getElementById('mgrsBand').value || 'R';
+        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TV';
+
         L.circleMarker(opLatLng, { radius: 9, color: '#ff9f43', fillColor: '#ff9f43', fillOpacity: 0.9 })
-          .bindPopup('<b>觀測所 (OP)</b>')
+          .bindPopup(`<b>觀測所 (OP)</b><br>MGRS: 51${band} ${sq} ${opE4} ${opN4}`)
           .addTo(mapMarkersGroup);
 
+        const opEm = getVal('opE8') * 10;
+        const opNm = getVal('opN8') * 10;
+
         globalGuns.forEach(g => {
-          const latLng = twd97ToLatLng(opE + g.x, opN + g.y);
-          L.circleMarker(latLng, { radius: 7, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.9 })
-            .bindPopup(`<b>砲陣地 ${g.id}</b>`)
-            .addTo(mapMarkersGroup);
+          const gE4 = Math.round((opEm + g.x) / 10);
+          const gN4 = Math.round((opNm + g.y) / 10);
+          const gLatLng = parseMGRSToLatLng(gE4, gN4);
+          if (gLatLng) {
+            L.circleMarker(gLatLng, { radius: 7, color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.9 })
+              .bindPopup(`<b>砲陣地 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}`)
+              .addTo(mapMarkersGroup);
+          }
         });
 
         globalTargets.forEach(t => {
-          const latLng = twd97ToLatLng(opE + t.x, opN + t.y);
-          L.circleMarker(latLng, { radius: 7, color: '#00d2d3', fillColor: '#00d2d3', fillOpacity: 0.9 })
-            .bindPopup(`<b>目標 ${t.id}</b>`)
-            .addTo(mapMarkersGroup);
+          const tE4 = Math.round((opEm + t.x) / 10);
+          const tN4 = Math.round((opNm + t.y) / 10);
+          const tLatLng = parseMGRSToLatLng(tE4, tN4);
+          if (tLatLng) {
+            L.circleMarker(tLatLng, { radius: 7, color: '#00d2d3', fillColor: '#00d2d3', fillOpacity: 0.9 })
+              .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE4} ${tN4}`)
+              .addTo(mapMarkersGroup);
+          }
         });
 
         map.setView(opLatLng, 14);
