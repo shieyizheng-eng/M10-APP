@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>M10 射擊圖板</title>
+  <title>M10 射擊指揮與真實圖例系統</title>
   
   <!-- Leaflet 地圖 CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -31,13 +31,13 @@
       display: flex;
       background-color: #1c262f;
       border-bottom: 2px solid #00a8ff;
-      z-index: 100;
+      z-index: 1000;
       flex-shrink: 0;
     }
     .top-tab-btn {
       flex: 1;
       padding: 12px 6px;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       font-weight: bold;
       background: transparent;
       color: #8395a7;
@@ -59,7 +59,6 @@
       position: relative;
     }
 
-    /* 電腦版 layout */
     @media (min-width: 850px) {
       .app-container { flex-direction: row; }
       .sidebar {
@@ -67,7 +66,6 @@
         min-width: 460px !important;
         height: 100% !important;
         border-right: 1px solid #2d3d36;
-        border-top: none !important;
         display: flex !important;
         order: 1;
       }
@@ -79,12 +77,10 @@
       }
     }
 
-    /* 手機版響應式 layout (滿版獨立視窗) */
     @media (max-width: 849px) {
       .sidebar {
         width: 100% !important;
         height: 100% !important;
-        border-top: none !important;
       }
       .main-content {
         width: 100% !important;
@@ -96,51 +92,43 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
       position: relative;
       background-color: #0a0d0f;
       overflow: hidden;
-    }
-    
-    .canvas-container {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      touch-action: none;
-    }
-    canvas {
-      background-color: #172026;
-      box-shadow: 0 0 25px rgba(0,0,0,0.9);
-      border-radius: 50%;
-      max-width: 96vw;
-      max-height: 96vw;
     }
 
     #mapViewContainer {
       width: 100%;
       height: 100%;
-      display: none;
-      flex-direction: column;
       position: relative;
+      display: flex;
+      flex-direction: column;
     }
     #mapView {
       flex: 1;
       width: 100%;
+      z-index: 1;
     }
 
-    /* 地圖圖層底欄控制面板 */
+    /* M10 密位環 (Overlay Canvas) 疊加於真實圖例 */
+    #milRingCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 400;
+    }
+
     .map-layer-bar {
       background-color: rgba(28, 38, 47, 0.95);
       border-top: 1px solid #00a8ff;
-      padding: 8px;
+      padding: 8px 12px;
       display: flex;
       flex-wrap: wrap;
       justify-content: space-around;
-      gap: 6px;
+      gap: 8px;
       z-index: 500;
     }
     .map-layer-bar label {
@@ -150,19 +138,6 @@
       align-items: center;
       gap: 4px;
       cursor: pointer;
-    }
-
-    .board-hint {
-      position: absolute;
-      bottom: 8px;
-      color: #8395a7;
-      font-size: 0.72rem;
-      background-color: rgba(0,0,0,0.75);
-      padding: 4px 10px;
-      border-radius: 12px;
-      pointer-events: none;
-      text-align: center;
-      z-index: 15;
     }
 
     .sidebar {
@@ -358,6 +333,14 @@
       font-size: 0.72rem;
       margin-bottom: 6px;
     }
+    .history-card {
+      background-color: #151a1e;
+      border: 1px solid #3c4858;
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 6px;
+      font-size: 0.75rem;
+    }
   </style>
 </head>
 <body>
@@ -365,8 +348,7 @@
   <!-- 頂部獨立大分頁導航 -->
   <div class="top-app-bar">
     <button class="top-tab-btn active" id="btnMainSidebarTab" onclick="switchMainTab('sidebar')">數據計算</button>
-    <button class="top-tab-btn" id="btnMainCanvasTab" onclick="switchMainTab('canvas')">M10 射擊圖板</button>
-    <button class="top-tab-btn" id="btnMainMapTab" onclick="switchMainTab('map')">真實圖例</button>
+    <button class="top-tab-btn" id="btnMainMapTab" onclick="switchMainTab('map')">真實圖例 (M10圖板)</button>
   </div>
 
   <div class="app-container">
@@ -381,7 +363,7 @@
       </div>
 
       <div class="dial-control-group">
-        <div class="section-title" style="color: #e1b12c; border-color: #e1b12c;">圖板轉盤控制</div>
+        <div class="section-title" style="color: #e1b12c; border-color: #e1b12c;">M10 密位外環轉盤旋轉</div>
         <div class="input-row">
           <label>旋轉角度: <strong id="rotAngleDisplay" style="color:#00a8ff;">0000 mil</strong></label>
           <div>
@@ -393,19 +375,7 @@
         </div>
         <div class="slider-row">
           <input type="range" id="rotSlider" min="0" max="6400" value="0" step="5" oninput="onRotationSliderChange(this.value)">
-          <button class="btn-mini" onclick="resetRotation()">歸零</button>
-        </div>
-
-        <div class="input-row" style="margin-top: 6px;">
-          <label>縮放倍率: <strong id="zoomDisplay" style="color:#4cd137;">100%</strong></label>
-          <div>
-            <button class="btn-mini" onclick="adjustZoom(-0.25)">- 縮小</button>
-            <button class="btn-mini" onclick="adjustZoom(0.25)">+ 放大</button>
-          </div>
-        </div>
-        <div class="slider-row">
-          <input type="range" id="zoomSlider" min="0.5" max="8.0" value="1.0" step="0.05" oninput="onZoomSliderChange(this.value)">
-          <button class="btn-mini" onclick="resetViewPort()">重置</button>
+          <button class="btn-mini" onclick="resetRotation()">歸北</button>
         </div>
       </div>
 
@@ -434,14 +404,12 @@
 
           <!-- 動態觀測員 (OP) 管理 -->
           <div class="input-group">
-            <div class="section-title">1. 觀測員 (OP) 清單與當前選取</div>
+            <div class="section-title">1. 觀測員 (OP) 清單與選取</div>
             <div class="input-row">
               <label>當前計算 OP:</label>
               <select id="activeOpSelect" style="width:110px;" onchange="onActiveOpChange()"></select>
             </div>
-            <div id="opInputsContainer">
-              <!-- 動態生成 OP 座標輸入列 -->
-            </div>
+            <div id="opInputsContainer"></div>
             <button class="action-btn add-btn" onclick="addNewOpRow()">+ 新增觀測員 (OP)</button>
           </div>
 
@@ -460,9 +428,7 @@
 
           <div class="input-group">
             <div class="section-title">3. 動態目標點清單 (E / N / 標高)</div>
-            <div id="targetInputsContainer">
-              <!-- 動態生成目標列 -->
-            </div>
+            <div id="targetInputsContainer"></div>
             <button class="action-btn add-btn" onclick="addNewTargetRow()">+ 動態新增目標</button>
           </div>
         </div>
@@ -753,10 +719,10 @@
           </div>
         </div>
 
-        <button class="action-btn" onclick="executeEffectFire()">標定新目標並計算效力射諸元</button>
+        <button class="action-btn" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
 
         <div class="result-box" style="margin-top:8px;">
-          <div class="result-title">效力射最終產製諸元矩陣</div>
+          <div class="result-title">最新效力射產製諸元矩陣</div>
           <table class="result-table">
             <thead>
               <tr><th>砲位</th><th>修正方位角</th><th>修正距離</th><th>高程差 ΔH</th></tr>
@@ -772,30 +738,32 @@
           <div id="handwheelTurnsDisplay" style="font-size:0.75rem; color:#e0e6ed; line-height:1.4;">-</div>
         </div>
 
-        <div class="section-title" style="margin-top:8px;">射擊指揮官指令與射擊口令表</div>
+        <div class="section-title" style="margin-top:8px;">最新任務射擊口令表</div>
         <div class="command-output-box" id="commandOutputBox">等待產製射擊指令...</div>
+
+        <!-- 第一點要求：效力射全任務歷史紀錄區 -->
+        <div class="section-title" style="margin-top:12px; color:#e1b12c; border-color:#e1b12c;">效力射任務歷史履歷</div>
+        <div id="effectHistoryContainer">
+          <div style="font-size:0.75rem; color:#8395a7; text-align:center;">尚無效力射歷史紀錄</div>
+        </div>
       </div>
 
     </div>
 
-    <!-- M10 圖板畫布主區域 -->
-    <div class="main-content" id="canvasMainContainer">
-      <div class="canvas-container" id="canvasContainer">
-        <canvas id="boardCanvas" width="760" height="760"></canvas>
-      </div>
-      <div class="board-hint" id="viewHint">💡 手指拖曳可平移｜雙指捏合/滾輪縮放｜數據頁面可調整轉盤</div>
-    </div>
-
-    <!-- 真實圖例 Leaflet 地圖容器 -->
-    <div id="mapViewContainer">
-      <div id="mapView"></div>
-      
-      <!-- 第二點要求：真實圖例底層勾選過濾欄 -->
-      <div class="map-layer-bar">
-        <label><input type="checkbox" id="layerTarget" checked onchange="updateMapMarkers()"> 🎯 目標點</label>
-        <label><input type="checkbox" id="layerTrial" checked onchange="updateMapMarkers()"> 💥 #2砲試射彈著點</label>
-        <label><input type="checkbox" id="layerWing" checked onchange="updateMapMarkers()"> 🚀 #1/#3砲翼次彈著</label>
-        <label><input type="checkbox" id="layerEffect" checked onchange="updateMapMarkers()"> 🔲 效力射涵蓋區</label>
+    <!-- 真實圖例 Leaflet 地圖 + M10 密位環畫布 -->
+    <div class="main-content" id="mapMainContainer">
+      <div id="mapViewContainer">
+        <div id="mapView"></div>
+        <!-- 疊加於地圖上的 M10 密位環 -->
+        <canvas id="milRingCanvas"></canvas>
+        
+        <!-- 底層圖層勾選控制欄 -->
+        <div class="map-layer-bar">
+          <label><input type="checkbox" id="layerTarget" checked onchange="updateMapMarkers()"> 🎯 目標點</label>
+          <label><input type="checkbox" id="layerTrial" checked onchange="updateMapMarkers()"> 💥 #2砲試射彈著</label>
+          <label><input type="checkbox" id="layerWing" checked onchange="updateMapMarkers()"> 🚀 #1/#3砲翼次彈著</label>
+          <label><input type="checkbox" id="layerEffect" checked onchange="updateMapMarkers()"> 🔲 效力射涵蓋區</label>
+        </div>
       </div>
     </div>
 
@@ -806,47 +774,39 @@
   <script src="https://cdn.jsdelivr.net/npm/mgrs@2.0.0/dist/mgrs.min.js"></script>
 
   <script>
-    const canvas = document.getElementById('boardCanvas');
-    const ctx = canvas.getContext('2d');
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const fixedBoardRadius = canvas.width / 2 - 55;
+    const milCanvas = document.getElementById('milRingCanvas');
+    const milCtx = milCanvas.getContext('2d');
 
     let currentMainView = 'sidebar'; 
     let currentTab = 'tab1';
     let currentMode = 'grid8';
 
     let boardRotationMil = 0; 
-    let contentZoomScale = 1.0; 
-    let panOffsetX = 0; 
-    let panOffsetY = 0; 
-    let maxRange = 3000;       
-
-    // 動態資料結構
-    let globalOPs = [
-      { id: 'OP1', e: '4999', n: '1962', alt: 100 }
-    ];
+    let globalOPs = [{ id: 'OP1', e: '4999', n: '1962', alt: 100 }];
     let activeOpId = 'OP1';
 
     let globalGuns = [];       
     let globalTargets = [];    
     let correctionShots = [];  
     let wingShotRounds = [];   
-    let activeEffectArea = null; 
+    let effectFireHistory = []; 
 
     let isReindexMode = true; 
     let baseAzimuthM2T1 = 0;
-    const shotColors = ['#ff9f43', '#f368e0', '#ffda79', '#00d2d3', '#54a0ff', '#5f27cd'];
 
     let map = null;
     let mapMarkersGroup = null;
 
-    // 初始化 OP 選單與輸入列
+    // 30+ 高對比動態色彩生成引擎 (Golden Ratio Hue Spacing)
+    function getDistinctColor(index) {
+      const hue = Math.round((index * 137.5) % 360);
+      return `hsl(${hue}, 90%, 60%)`;
+    }
+
     function initOpData() {
       const activeSelect = document.getElementById('activeOpSelect');
       const container = document.getElementById('opInputsContainer');
-      activeSelect.innerHTML = '';
-      container.innerHTML = '';
+      activeSelect.innerHTML = ''; container.innerHTML = '';
 
       globalOPs.forEach(op => {
         const opt = document.createElement('option');
@@ -874,8 +834,7 @@
     function addNewOpRow() {
       const newId = `OP${globalOPs.length + 1}`;
       globalOPs.push({ id: newId, e: '4999', n: '1962', alt: 100 });
-      initOpData();
-      calculateAndDraw();
+      initOpData(); calculateAndDraw();
     }
 
     function onActiveOpChange() {
@@ -884,8 +843,7 @@
     }
 
     function updateOpFromInputs() {
-      const rows = document.querySelectorAll('.op-input-row');
-      rows.forEach(row => {
+      document.querySelectorAll('.op-input-row').forEach(row => {
         const id = row.dataset.id;
         const opObj = globalOPs.find(o => o.id === id);
         if (opObj) {
@@ -948,47 +906,31 @@
       calculateAndDraw();
     }
 
-    /* 手機/電腦版 滿版分頁切換 */
     function switchMainTab(viewType) {
       currentMainView = viewType;
       document.getElementById('btnMainSidebarTab').classList.toggle('active', viewType === 'sidebar');
-      document.getElementById('btnMainCanvasTab').classList.toggle('active', viewType === 'canvas');
       document.getElementById('btnMainMapTab').classList.toggle('active', viewType === 'map');
 
       const sidebar = document.getElementById('sidebarContainer');
-      const canvasWin = document.getElementById('canvasMainContainer');
-      const mapWin = document.getElementById('mapViewContainer');
+      const mapWin = document.getElementById('mapMainContainer');
 
-      // 電腦版 (>=850px)
       if (window.innerWidth >= 850) {
         sidebar.style.display = 'flex';
-        if (viewType === 'map') {
-          canvasWin.style.display = 'none';
-          mapWin.style.display = 'flex';
-          initMap();
-          setTimeout(() => { map.invalidateSize(); }, 200);
-          updateMapMarkers();
-        } else {
-          canvasWin.style.display = 'flex';
-          mapWin.style.display = 'none';
-        }
+        mapWin.style.display = 'flex';
       } else {
-        // 手機版全螢幕單一視窗切換
         sidebar.style.display = (viewType === 'sidebar') ? 'flex' : 'none';
-        canvasWin.style.display = (viewType === 'canvas') ? 'flex' : 'none';
         mapWin.style.display = (viewType === 'map') ? 'flex' : 'none';
-
-        if (viewType === 'map') {
-          initMap();
-          setTimeout(() => { map.invalidateSize(); }, 200);
-          updateMapMarkers();
-        }
       }
+
+      initMap();
+      setTimeout(() => { map.invalidateSize(); resizeMilRingCanvas(); updateMapMarkers(); }, 200);
     }
 
-    window.addEventListener('resize', () => { switchMainTab(currentMainView); });
+    window.addEventListener('resize', () => {
+      switchMainTab(currentMainView);
+      resizeMilRingCanvas();
+    });
 
-    /* 初始化 Leaflet 地圖 */
     function initMap() {
       if (map) return;
 
@@ -1005,6 +947,60 @@
       osm.addTo(map);
       L.control.layers({ "全球街道圖": osm, "高解析衛星圖": esriSat, "電子地圖": nlscEmap }, null, { position: 'topright' }).addTo(map);
       mapMarkersGroup = L.layerGroup().addTo(map);
+
+      map.on('move resize zoom', () => { drawMilRingOverlay(); });
+    }
+
+    function resizeMilRingCanvas() {
+      milCanvas.width = milCanvas.parentElement.clientWidth;
+      milCanvas.height = milCanvas.parentElement.clientHeight;
+      drawMilRingOverlay();
+    }
+
+    /* 繪製疊加在真實圖例上的 M10 0-6400 密位外環 (固定螢幕大小) */
+    function drawMilRingOverlay() {
+      if (!milCanvas.width || !milCanvas.height) return;
+      milCtx.clearRect(0, 0, milCanvas.width, milCanvas.height);
+
+      const w = milCanvas.width, h = milCanvas.height;
+      const cX = w / 2, cY = h / 2;
+      const ringRadius = Math.min(w, h) * 0.42;
+
+      milCtx.save();
+      milCtx.translate(cX, cY);
+      milCtx.rotate(-milToRad(boardRotationMil));
+      milCtx.translate(-cX, -cY);
+
+      milCtx.beginPath();
+      milCtx.arc(cX, cY, ringRadius, 0, 2 * Math.PI);
+      milCtx.lineWidth = 2; milCtx.strokeStyle = 'rgba(0, 168, 255, 0.7)'; milCtx.stroke();
+
+      for (let m = 0; m < 6400; m += 20) {
+        const rad = milToRad(m);
+        const cos = Math.sin(rad), sin = -Math.cos(rad);
+        let tickLen = (m % 100 === 0) ? 12 : 6;
+
+        milCtx.beginPath();
+        milCtx.moveTo(cX + ringRadius * cos, cY + ringRadius * sin);
+        milCtx.lineTo(cX + (ringRadius - tickLen) * cos, cY + (ringRadius - tickLen) * sin);
+        milCtx.strokeStyle = (m % 100 === 0) ? '#00a8ff' : '#8395a7';
+        milCtx.lineWidth = (m % 100 === 0) ? 1.5 : 0.8;
+        milCtx.stroke();
+
+        if (m % 200 === 0) {
+          const tx = cX + (ringRadius - 22) * cos;
+          const ty = cY + (ringRadius - 22) * sin;
+          milCtx.save();
+          milCtx.translate(tx, ty);
+          milCtx.rotate(milToRad(boardRotationMil));
+          milCtx.fillStyle = (m % 800 === 0) ? '#4cd137' : '#e0e6ed';
+          milCtx.font = 'bold 10px monospace';
+          milCtx.textAlign = 'center'; milCtx.textBaseline = 'middle';
+          milCtx.fillText((m / 100).toString().padStart(2, '0'), 0, 0);
+          milCtx.restore();
+        }
+      }
+      milCtx.restore();
     }
 
     function parseMGRSToLatLng(e4Str, n4Str) {
@@ -1017,12 +1013,10 @@
         const fullMgrs = `51${band}${sq}${e4}${n4}`;
         const point = mgrs.toPoint(fullMgrs);
         return [point[1], point[0]];
-      } catch (e) {
-        return null;
-      }
+      } catch (e) { return null; }
     }
 
-    /* 地圖圖層同步 (修正試射彈與翼次彈同步，並繪製 3547m 防護圓與實心三角形 OP) */
+    /* 地圖動態繪製（含第二點要求：軸線旋轉矩陣分佈射擊多邊形演算） */
     function updateMapMarkers() {
       if (!map || !mapMarkersGroup) return;
       mapMarkersGroup.clearLayers();
@@ -1039,59 +1033,53 @@
       const opEm = parseFloat(activeOp.e) * 10;
       const opNm = parseFloat(activeOp.n) * 10;
 
-      // 1. 繪製所有觀測員 (實心三角形圖示)
+      // 1. 觀測員 (OP) 實心三角形
       globalOPs.forEach(op => {
         const opLatLng = parseMGRSToLatLng(op.e, op.n);
         if (opLatLng) {
           const isCurrent = (op.id === activeOpId);
-          const triangleSvg = `<svg width="18" height="18" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="${isCurrent ? '#ff9f43' : '#8395a7'}" stroke="#ffffff" stroke-width="6"/></svg>`;
-          const triangleIcon = L.divIcon({ html: triangleSvg, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
+          const svg = `<svg width="18" height="18" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="${isCurrent ? '#ff9f43' : '#8395a7'}" stroke="#ffffff" stroke-width="6"/></svg>`;
+          const icon = L.divIcon({ html: svg, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
 
-          L.marker(opLatLng, { icon: triangleIcon })
+          L.marker(opLatLng, { icon: icon })
             .bindPopup(`<b>觀測員 ${op.id} ${isCurrent ? '(當前選用)' : ''}</b><br>MGRS: 51${band} ${sq} ${op.e} ${op.n}<br>標高: ${op.alt}m`)
             .addTo(mapMarkersGroup);
         }
       });
 
-      // 2. 繪製砲陣地 (#1,#2,#3) 及 3547m 淡色防護圓 (第五點)
+      // 2. 砲陣地與 3547m 週向防護圓 (第五點要求)
       const gunColors = ['#ff4757', '#e1b12c', '#4cd137'];
       globalGuns.forEach((g, idx) => {
         const gE4 = Math.round((opEm + g.x) / 10);
         const gN4 = Math.round((opNm + g.y) / 10);
         const gLatLng = parseMGRSToLatLng(gE4, gN4);
         if (gLatLng) {
-          // 3547m 最大射程圓 (淡色系半透明)
           L.circle(gLatLng, {
-            radius: 3547,
-            color: gunColors[idx % 3],
-            fillColor: gunColors[idx % 3],
-            fillOpacity: 0.05,
-            weight: 1.5,
-            dashArray: '4, 4'
+            radius: 3547, color: gunColors[idx % 3], fillColor: gunColors[idx % 3], fillOpacity: 0.05, weight: 1.5, dashArray: '4, 4'
           }).addTo(mapMarkersGroup);
 
-          // 砲位圖示
           L.circleMarker(gLatLng, { radius: 6, color: gunColors[idx % 3], fillColor: gunColors[idx % 3], fillOpacity: 0.9 })
-            .bindPopup(`<b>砲位 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}<br>標高: ${g.alt}m<br>最大射程: 3547m`)
+            .bindPopup(`<b>砲位 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}<br>標高: ${g.alt}m`)
             .addTo(mapMarkersGroup);
         }
       });
 
-      // 3. 繪製目標點 (勾選框 1)
+      // 3. 目標點 (第一點要求：動態 30+ 獨立色彩引擎標記)
       if (showTarget) {
-        globalTargets.forEach(t => {
+        globalTargets.forEach((t, idx) => {
           const tE4 = Math.round((opEm + t.x) / 10);
           const tN4 = Math.round((opNm + t.y) / 10);
           const tLatLng = parseMGRSToLatLng(tE4, tN4);
           if (tLatLng) {
-            L.circleMarker(tLatLng, { radius: 6, color: '#00d2d3', fillColor: '#00d2d3', fillOpacity: 0.9 })
+            const color = getDistinctColor(idx);
+            L.circleMarker(tLatLng, { radius: 6, color: color, fillColor: color, fillOpacity: 0.9 })
               .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE4} ${tN4}<br>標高: ${t.alt}m`)
               .addTo(mapMarkersGroup);
           }
         });
       }
 
-      // 4. 繪製 #2 砲試射彈著點 (勾選框 2 - 第三點要求)
+      // 4. #2砲 試射彈著點
       if (showTrial) {
         correctionShots.forEach(shot => {
           const sE4 = Math.round((opEm + shot.x) / 10);
@@ -1105,7 +1093,7 @@
         });
       }
 
-      // 5. 繪製 #1、#3 砲翼次射彈著點 (勾選框 3 - 第三點要求)
+      // 5. #1/#3砲 翼次射彈著點
       if (showWing) {
         wingShotRounds.forEach(round => {
           round.shots.forEach(shot => {
@@ -1121,29 +1109,42 @@
         });
       }
 
-      // 6. 繪製效力射涵蓋面積矩形 (勾選框 4 - 第二點要求)
-      if (showEffect && activeEffectArea) {
-        const centerE4 = Math.round((opEm + activeEffectArea.x) / 10);
-        const centerN4 = Math.round((opNm + activeEffectArea.y) / 10);
-        const centerLatLng = parseMGRSToLatLng(centerE4, centerN4);
+      // 6. 效力射旋轉矩陣涵蓋多邊形 (第二點核心算法：對齊 OT 軸線旋轉)
+      if (showEffect) {
+        effectFireHistory.forEach(item => {
+          if (!item.area) return;
 
-        if (centerLatLng) {
-          const halfW = activeEffectArea.width / 2;
-          const halfD = activeEffectArea.depth / 2;
+          const area = item.area;
+          const radOT = milToRad(area.azOT);
+          const halfW = area.width / 2;
+          const halfD = area.depth / 2;
 
-          // 粗估經緯度位移米數
-          const dLat = (halfD / 111000);
-          const dLng = (halfW / (111000 * Math.cos(centerLatLng[0] * Math.PI / 180)));
-
-          const bounds = [
-            [centerLatLng[0] - dLat, centerLatLng[1] - dLng],
-            [centerLatLng[0] + dLat, centerLatLng[1] + dLng]
+          // 旋轉矩陣算角點
+          const cornersLocal = [
+            { x: -halfW, y: -halfD },
+            { x: halfW, y: -halfD },
+            { x: halfW, y: halfD },
+            { x: -halfW, y: halfD }
           ];
 
-          L.rectangle(bounds, { color: '#ff4757', weight: 2, fillColor: '#ff4757', fillOpacity: 0.25 })
-            .bindPopup(`<b>效力射涵蓋區 (${activeEffectArea.targetId})</b><br>涵蓋範圍: ${activeEffectArea.width}m × ${activeEffectArea.depth}m`)
-            .addTo(mapMarkersGroup);
-        }
+          const polygonLatLngs = [];
+          cornersLocal.forEach(pt => {
+            const rotX = pt.x * Math.cos(radOT) - pt.y * Math.sin(radOT);
+            const rotY = pt.x * Math.sin(radOT) + pt.y * Math.cos(radOT);
+
+            const cornerE4 = Math.round((opEm + area.centerX + rotX) / 10);
+            const cornerN4 = Math.round((opNm + area.centerY + rotY) / 10);
+            const latLng = parseMGRSToLatLng(cornerE4, cornerN4);
+            if (latLng) polygonLatLngs.push(latLng);
+          });
+
+          if (polygonLatLngs.length === 4) {
+            L.polygon(polygonLatLngs, {
+              color: item.color, weight: 2, fillColor: item.color, fillOpacity: 0.25
+            }).bindPopup(`<b>效力射任務: ${item.targetId}</b><br>射擊型態: ${item.sheafName}<br>涵蓋尺寸: ${area.width}m × ${area.depth}m<br>對齊 OT 軸線: ${item.area.azOT} mil`)
+              .addTo(mapMarkersGroup);
+          }
+        });
       }
 
       const activeOpLatLng = parseMGRSToLatLng(activeOp.e, activeOp.n);
@@ -1223,216 +1224,13 @@
       return Math.round(rel);
     }
 
-    function xyToCanvas(relX, relY) {
-      const rotRad = milToRad(boardRotationMil);
-      const rx = relX * Math.cos(rotRad) - relY * Math.sin(rotRad);
-      const ry = relX * Math.sin(rotRad) + relY * Math.cos(rotRad);
-      const scaledRadius = fixedBoardRadius * contentZoomScale;
-      return {
-        x: centerX + panOffsetX + (rx / maxRange) * scaledRadius,
-        y: centerY + panOffsetY - (ry / maxRange) * scaledRadius
-      };
-    }
-
     function updateRotationUI() {
       document.getElementById('rotAngleDisplay').innerText = `${Math.round(boardRotationMil).toString().padStart(4, '0')} mil`;
       document.getElementById('rotSlider').value = Math.round(boardRotationMil);
     }
-    function updateZoomUI() {
-      document.getElementById('zoomDisplay').innerText = `${Math.round(contentZoomScale * 100)}%`;
-      document.getElementById('zoomSlider').value = contentZoomScale;
-    }
-    function adjustRotation(deltaMil) { boardRotationMil = (boardRotationMil + deltaMil + 6400) % 6400; updateRotationUI(); calculateAndDraw(); }
-    function onRotationSliderChange(val) { boardRotationMil = parseFloat(val) % 6400; updateRotationUI(); calculateAndDraw(); }
-    function resetRotation() { boardRotationMil = 0; updateRotationUI(); calculateAndDraw(); }
-    function adjustZoom(delta) { contentZoomScale = Math.min(Math.max(0.5, contentZoomScale + delta), 8.0); updateZoomUI(); calculateAndDraw(); }
-    function onZoomSliderChange(val) { contentZoomScale = parseFloat(val); updateZoomUI(); calculateAndDraw(); }
-    function resetViewPort() {
-      contentZoomScale = 1.0;
-      panOffsetX = 0;
-      panOffsetY = 0;
-      updateZoomUI();
-      calculateAndDraw();
-    }
-
-    canvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      const oldZoom = contentZoomScale;
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-      let newZoom = Math.min(Math.max(0.5, oldZoom * zoomFactor), 8.0);
-
-      panOffsetX = mouseX - (mouseX - panOffsetX) * (newZoom / oldZoom);
-      panOffsetY = mouseY - (mouseY - panOffsetY) * (newZoom / oldZoom);
-
-      contentZoomScale = newZoom;
-      updateZoomUI();
-      calculateAndDraw();
-    }, { passive: false });
-
-    let isDragging = false, startX = 0, startY = 0, initialTouchDist = null;
-
-    canvas.parentElement.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      startX = e.clientX - panOffsetX;
-      startY = e.clientY - panOffsetY;
-    });
-    window.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      panOffsetX = e.clientX - startX;
-      panOffsetY = e.clientY - startY;
-      calculateAndDraw();
-    });
-    window.addEventListener('mouseup', () => { isDragging = false; });
-
-    canvas.parentElement.addEventListener('touchstart', (e) => {
-      if (e.touches.length === 1) {
-        isDragging = true;
-        startX = e.touches[0].clientX - panOffsetX;
-        startY = e.touches[0].clientY - panOffsetY;
-      } else if (e.touches.length === 2) {
-        isDragging = false;
-        initialTouchDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-      }
-    }, { passive: true });
-
-    canvas.parentElement.addEventListener('touchmove', (e) => {
-      if (isDragging && e.touches.length === 1) {
-        panOffsetX = e.touches[0].clientX - startX;
-        panOffsetY = e.touches[0].clientY - startY;
-        calculateAndDraw();
-      } else if (e.touches.length === 2 && initialTouchDist) {
-        const currentDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const factor = currentDist / initialTouchDist;
-        contentZoomScale = Math.min(Math.max(0.5, contentZoomScale * (factor > 1 ? 1.03 : 0.97)), 8.0);
-        initialTouchDist = currentDist;
-        updateZoomUI();
-        calculateAndDraw();
-      }
-    }, { passive: true });
-
-    canvas.parentElement.addEventListener('touchend', () => {
-      isDragging = false; initialTouchDist = null;
-    });
-
-    function drawBoard() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(-milToRad(boardRotationMil));
-      ctx.translate(-centerX, -centerY);
-
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, fixedBoardRadius + 22, 0, 2 * Math.PI);
-      ctx.fillStyle = '#1c262f'; ctx.fill();
-      ctx.lineWidth = 3; ctx.strokeStyle = '#3c4858'; ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, fixedBoardRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = '#141d22'; ctx.fill();
-      ctx.lineWidth = 2; ctx.strokeStyle = '#2d3d36'; ctx.stroke();
-
-      for (let m = 0; m < 6400; m += 10) {
-        const rad = milToRad(m);
-        const cos = Math.sin(rad), sin = -Math.cos(rad);
-        let tickLen = (m % 100 === 0) ? 14 : ((m % 50 === 0) ? 8 : 4);
-        const xOuter = centerX + (fixedBoardRadius + tickLen) * cos;
-        const yOuter = centerY + (fixedBoardRadius + tickLen) * sin;
-        const xInner = centerX + fixedBoardRadius * cos;
-        const yInner = centerY + fixedBoardRadius * sin;
-
-        ctx.beginPath(); ctx.moveTo(xInner, yInner); ctx.lineTo(xOuter, yOuter);
-        ctx.strokeStyle = (m % 100 === 0) ? '#00a8ff' : (m % 50 === 0 ? '#8395a7' : '#3c4858');
-        ctx.lineWidth = (m % 100 === 0) ? 1.5 : 0.8; ctx.stroke();
-
-        if (m % 100 === 0) {
-          const tx = centerX + (fixedBoardRadius + 28) * cos;
-          const ty = centerY + (fixedBoardRadius + 28) * sin;
-          ctx.save();
-          ctx.translate(tx, ty);
-          ctx.rotate(milToRad(boardRotationMil));
-          ctx.fillStyle = (m % 400 === 0) ? '#4cd137' : '#e0e6ed';
-          ctx.font = (m % 400 === 0) ? 'bold 11px Arial' : '10px Arial';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText((m / 100).toString().padStart(2, '0'), 0, 0);
-          ctx.restore();
-        }
-      }
-      ctx.restore();
-
-      const innerCenter = { x: centerX + panOffsetX, y: centerY + panOffsetY };
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, fixedBoardRadius - 1, 0, 2 * Math.PI);
-      ctx.clip(); 
-
-      const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
-      for (let d = 500; d <= maxRange * 2; d += 500) {
-        const r = (d / maxRange) * scaledBoardRadius;
-        if (r > fixedBoardRadius * 2.0) break;
-        ctx.beginPath();
-        ctx.arc(innerCenter.x, innerCenter.y, r, 0, 2 * Math.PI);
-        ctx.strokeStyle = (d % 1000 === 0) ? '#2e4a3e' : '#1e3028';
-        ctx.lineWidth = (d % 1000 === 0) ? 1.5 : 0.8;
-        ctx.stroke();
-        if (d % 1000 === 0 && r < fixedBoardRadius) {
-          ctx.fillStyle = '#486558'; ctx.font = '10px Arial';
-          ctx.fillText(`${d}m`, innerCenter.x + 5, innerCenter.y - r + 12);
-        }
-      }
-
-      // 在圖板繪製 3547m 最大射程防護圓 (第五點要求)
-      globalGuns.forEach(gun => {
-        const gunPos = xyToCanvas(gun.x, gun.y);
-        const r3547 = (3547 / maxRange) * scaledBoardRadius;
-        ctx.beginPath();
-        ctx.arc(gunPos.x, gunPos.y, r3547, 0, 2 * Math.PI);
-        ctx.strokeStyle = 'rgba(225, 177, 44, 0.25)';
-        ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
-      });
-
-      // 第一點要求：繪製觀測員 (OP) 實心三角形圖示
-      globalOPs.forEach(op => {
-        const activeOp = globalOPs.find(o => o.id === activeOpId) || globalOPs[0];
-        const activeOpEm = parseFloat(activeOp.e) * 10;
-        const activeOpNm = parseFloat(activeOp.n) * 10;
-        const relX = (parseFloat(op.e) * 10) - activeOpEm;
-        const relY = (parseFloat(op.n) * 10) - activeOpNm;
-        const opPos = xyToCanvas(relX, relY);
-
-        ctx.beginPath();
-        ctx.moveTo(opPos.x, opPos.y - 7);
-        ctx.lineTo(opPos.x + 6, opPos.y + 5);
-        ctx.lineTo(opPos.x - 6, opPos.y + 5);
-        ctx.closePath();
-        ctx.fillStyle = (op.id === activeOpId) ? '#ff9f43' : '#8395a7';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = '#ff9f43'; ctx.font = 'bold 10px sans-serif';
-        ctx.fillText(op.id, opPos.x + 8, opPos.y - 2);
-      });
-
-      ctx.restore();
-    }
-
-    function drawPoint(pos, label, color, r = 4.5) {
-      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
-      ctx.fillStyle = color; ctx.fill();
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
-      ctx.fillText(label, pos.x + r + 3, pos.y - r - 2);
-    }
+    function adjustRotation(deltaMil) { boardRotationMil = (boardRotationMil + deltaMil + 6400) % 6400; updateRotationUI(); drawMilRingOverlay(); }
+    function onRotationSliderChange(val) { boardRotationMil = parseFloat(val) % 6400; updateRotationUI(); drawMilRingOverlay(); }
+    function resetRotation() { boardRotationMil = 0; updateRotationUI(); drawMilRingOverlay(); }
 
     function calculateAndDraw() {
       globalGuns = [];
@@ -1493,16 +1291,6 @@
         document.getElementById('dispM3M2').innerText = `${Math.abs(v3).toFixed(1)} m (${v3 > 0 ? '右側' : '左側'})`;
       }
 
-      let maxDist = 1200;
-      globalGuns.forEach(g => maxDist = Math.max(maxDist, Math.hypot(g.x, g.y)));
-      globalTargets.forEach(t => maxDist = Math.max(maxDist, Math.hypot(t.x, t.y)));
-      correctionShots.forEach(s => maxDist = Math.max(maxDist, Math.hypot(s.x, s.y)));
-
-      maxDist = Math.max(maxDist, 1000);
-      maxRange = Math.max(2000, Math.min(10000, Math.ceil((maxDist * 1.35) / 500) * 500));
-
-      drawBoard();
-
       // 更新諸元矩陣表
       const resHeader = document.getElementById('resultTableHeader');
       const relHeader = document.getElementById('relativeTableHeader');
@@ -1532,56 +1320,13 @@
 
           tr.innerHTML += `<td><span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span><br><span class="val-alt">ΔH:${deltaH}m</span></td>`;
           relTr.innerHTML += `<td><span class="val-rel">${relMil.toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span></td>`;
-
-          if (gun.id === '#1') {
-            const posM = xyToCanvas(gun.x, gun.y), posT = xyToCanvas(target.x, target.y);
-            ctx.beginPath(); ctx.moveTo(posM.x, posM.y); ctx.lineTo(posT.x, posT.y);
-            ctx.strokeStyle = 'rgba(255, 71, 87, 0.2)'; ctx.lineWidth = 1; ctx.stroke();
-          }
         });
         tbody.appendChild(tr); relTbody.appendChild(relTr);
       });
 
-      globalTargets.forEach(t => drawPoint(xyToCanvas(t.x, t.y), t.id, '#00d2d3', 5));
-      globalGuns.forEach(g => drawPoint(xyToCanvas(g.x, g.y), g.id, '#ff4757', 3.5));
-
-      correctionShots.forEach(shot => {
-        const pos = xyToCanvas(shot.x, shot.y);
-        drawPoint(pos, `第${shot.shotNum}發`, shot.color, 4);
-        const basePos = xyToCanvas(shot.parentX, shot.parentY);
-        ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
-        ctx.strokeStyle = shot.color; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
-      });
-
-      wingShotRounds.forEach(round => {
-        round.shots.forEach(shot => {
-          const pos = xyToCanvas(shot.x, shot.y);
-          drawPoint(pos, `${shot.gunId}(${round.roundNum})`, shot.color, 4);
-          const basePos = xyToCanvas(shot.parentX, shot.parentY);
-          ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
-          ctx.strokeStyle = shot.color; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
-        });
-      });
-
-      // 第二點要求：分佈射擊涵蓋面積矩形繪製
-      if (activeEffectArea) {
-        const posCenter = xyToCanvas(activeEffectArea.x, activeEffectArea.y);
-        const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
-        const wPx = (activeEffectArea.width / maxRange) * scaledBoardRadius;
-        const dPx = (activeEffectArea.depth / maxRange) * scaledBoardRadius;
-
-        ctx.save();
-        ctx.translate(posCenter.x, posCenter.y);
-        ctx.fillStyle = 'rgba(255, 71, 87, 0.2)';
-        ctx.strokeStyle = '#ff4757';
-        ctx.lineWidth = 1.5;
-        ctx.fillRect(-wPx / 2, -dPx / 2, wPx, dPx);
-        ctx.strokeRect(-wPx / 2, -dPx / 2, wPx, dPx);
-        ctx.restore();
-      }
-
       if (currentTab === 'tab2') renderCorrectionResultTable();
-      if (currentMainView === 'map') updateMapMarkers();
+      updateMapMarkers();
+      drawMilRingOverlay();
     }
 
     function populateTargetSelects() {
@@ -1645,7 +1390,7 @@
         shotNum: newShotNum, targetId: targetId,
         x: parentX + deltaX, y: parentY + deltaY,
         parentX: parentX, parentY: parentY,
-        color: shotColors[(newShotNum - 1) % shotColors.length]
+        color: getDistinctColor(newShotNum + 10)
       });
 
       calculateAndDraw();
@@ -1779,11 +1524,12 @@
       });
     }
 
+    /* 執行效力射（包含第一點要求：全履歷留存；第二點要求：旋轉軸線矩陣計算） */
     function executeEffectFire() {
       const method = document.getElementById('targetDesignationMethod').value;
-      const targetName = document.getElementById('newTargetName').value.trim() || 'T_New';
+      const targetName = document.getElementById('newTargetName').value.trim() || `T${globalTargets.length + 1}`;
       
-      let newX = 0, newY = 0, newAlt = 50;
+      let newX = 0, newY = 0, newAlt = 50, azOT = 0;
       const activeOp = globalOPs.find(o => o.id === activeOpId) || globalOPs[0];
       const opE = parseFloat(activeOp.e) * 10;
       const opN = parseFloat(activeOp.n) * 10;
@@ -1793,7 +1539,7 @@
         const baseTarget = globalTargets.find(t => t.id === baseId);
         if (!baseTarget) return;
 
-        const azOT = parseFloat(document.getElementById('kpAzOT').value) || 0;
+        azOT = parseFloat(document.getElementById('kpAzOT').value) || 0;
         const radOT = milToRad(azOT);
 
         const dirSign = document.getElementById('kpDirSign').value === 'right' ? 1 : -1;
@@ -1809,11 +1555,8 @@
         newY = baseTarget.y + deltaY;
         newAlt = baseTarget.alt;
 
-        const shiftMil = Math.atan2(shiftW, Math.hypot(baseTarget.x, baseTarget.y)) * 6400 / (2 * Math.PI);
-        document.getElementById('kpWarning').style.display = (Math.abs(shiftMil) > 400) ? 'block' : 'none';
-
       } else if (method === 'polar') {
-        const azOT = parseFloat(document.getElementById('polarNewAz').value) || 0;
+        azOT = parseFloat(document.getElementById('polarNewAz').value) || 0;
         const distOT = parseFloat(document.getElementById('polarNewDist').value) || 1000;
         newAlt = parseFloat(document.getElementById('polarNewAlt').value) || 50;
         const radOT = milToRad(azOT);
@@ -1828,6 +1571,7 @@
 
         newX = gE - opE;
         newY = gN - opN;
+        azOT = radToMil(Math.atan2(newX, newY));
       }
 
       const e8Str = Math.round((opE + newX) / 10).toString().padStart(4, '0');
@@ -1838,19 +1582,12 @@
         addNewTargetRow(targetName, e8Str, n8Str, newAlt);
       }
 
-      const sheaf = document.getElementById('sheafTypeSelect').value;
+      const sheafSelect = document.getElementById('sheafTypeSelect');
+      const sheaf = sheafSelect.value;
+      const sheafName = sheafSelect.options[sheafSelect.selectedIndex].text;
       const windFromRight = document.getElementById('windDirSelect').value === 'left_to_right';
-      const tbody = document.getElementById('effectFireTableBody');
-      tbody.innerHTML = '';
 
-      let turnText = '';
-      let cmdText = '';
       let areaW = 50, areaD = 50;
-
-      const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[0];
-      const mtDistM2 = Math.hypot(newX - m2Gun.x, newY - m2Gun.y);
-
-      // 設定涵蓋面積
       if (sheaf === 'section_sheaf') { areaW = 240; areaD = 50; }
       else if (sheaf === 'traverse_4') { areaW = 300; areaD = 30; }
       else if (sheaf === 'traverse_6') { areaW = 300; areaD = 50; }
@@ -1858,33 +1595,45 @@
       else if (sheaf === 'search_6') { areaW = 100; areaD = 100; }
       else if (sheaf === 'parallel_front') { areaW = 120; areaD = 50; }
 
-      activeEffectArea = { targetId: targetName, x: newX, y: newY, width: areaW, depth: areaD };
+      const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[0];
+      const mtDistM2 = Math.hypot(newX - m2Gun.x, newY - m2Gun.y);
+
+      let gunElements = [];
+      const tbody = document.getElementById('effectFireTableBody');
+      tbody.innerHTML = '';
 
       globalGuns.forEach(gun => {
         let targetX = newX, targetY = newY;
 
+        // 沿 OT 軸線旋轉之偏移計算[span_0](start_span)[span_0](end_span)
+        const radOT = milToRad(azOT);
+        let shiftW = 0, shiftD = 0;
+
         if (sheaf === 'section_sheaf') {
-          targetX += windFromRight ? 50 : -50;
+          shiftW = windFromRight ? 50 : -50;
         } else if (sheaf === 'traverse_4') {
-          targetX += windFromRight ? 50 : -50;
-          if (gun.id === '#1') targetX += 100;
-          if (gun.id === '#3') targetX -= 100;
+          shiftW = windFromRight ? 50 : -50;
+          if (gun.id === '#1') shiftW += 100;
+          if (gun.id === '#3') shiftW -= 100;
         } else if (sheaf === 'traverse_6') {
-          targetX += windFromRight ? 25 : -25;
-          if (gun.id === '#1') targetX += 100;
-          if (gun.id === '#3') targetX -= 100;
+          shiftW = windFromRight ? 25 : -25;
+          if (gun.id === '#1') shiftW += 100;
+          if (gun.id === '#3') shiftW -= 100;
         } else if (sheaf.includes('search')) {
-          targetY += 25;
+          shiftD = 25;
         }
+
+        targetX += shiftD * Math.sin(radOT) + shiftW * Math.cos(radOT);
+        targetY += shiftD * Math.cos(radOT) - shiftW * Math.sin(radOT);
 
         const dx = targetX - gun.x, dy = targetY - gun.y;
         const dist = Math.hypot(dx, dy);
         let az = radToMil(Math.atan2(dx, dy));
         const deltaH = newAlt - gun.alt;
 
-        if (!isReindexMode) {
-          az = (az + 10) % 6400;
-        }
+        if (!isReindexMode) az = (az + 10) % 6400;
+
+        gunElements.push({ gunId: gun.id, az: Math.round(az), dist: Math.round(dist), deltaH: deltaH });
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -1897,33 +1646,73 @@
       });
 
       const mtK = mtDistM2 / 1000;
+      let turnText = '', cmdText = '';
       if (sheaf === 'section_sheaf') {
         const turns = (6.66 / mtK).toFixed(1);
-        turnText = `方向機轉移量 = 6.66 ÷ (MT/1000) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發分段射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發分段射、向左 ${turns} 轉 3 發、準備好放！`;
+        turnText = `方向機轉移量 = 6.66 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`[span_1](start_span)[span_1](end_span);
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發分段射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發分段射、向左 ${turns} 轉 3 發、準備好放！`[span_2](start_span)[span_2](end_span);
       } else if (sheaf === 'traverse_4') {
         const turns = (2 / mtK).toFixed(1);
-        turnText = `方向機轉移量 = 2 ÷ (MT/1000) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲4發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲4發橫射、向左 ${turns} 轉 么發、準備好放！`;
+        turnText = `方向機轉移量 = 2 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`[span_3](start_span)[span_3](end_span);
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲4發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲4發橫射、向左 ${turns} 轉 么發、準備好放！`[span_4](start_span)[span_4](end_span);
       } else if (sheaf === 'traverse_6') {
         const turns = (3.33 / mtK).toFixed(1);
-        turnText = `方向機轉移量 = 3.33 ÷ (MT/1000) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
+        turnText = `方向機轉移量 = 3.33 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`[span_5](start_span)[span_5](end_span);
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`[span_6](start_span)[span_6](end_span);
       } else if (sheaf.includes('search')) {
-        turnText = `高低機轉移量 = (兩不同距離射角差) × 2 轉 = <strong>約 3 轉 (每轉 0.5 度)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`;
+        turnText = `高低機轉移量 = (兩不同距離射角差) × 2 轉 = <strong>約 3 轉 (每轉 0.5 度)</strong>`[span_7](start_span)[span_7](end_span);
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`[span_8](start_span)[span_8](end_span);
       } else {
-        turnText = `固定射擊模式：不需要轉動方向機/高低機手轉數。`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：全排集火效力射、目標編號 ${targetName}\n射擊口令：全排榴彈、效力射準備好放！`;
+        turnText = `固定射擊模式：不需要轉動方向機/高低機手轉數。`[span_9](start_span)[span_9](end_span);
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：全排集火效力射、目標編號 ${targetName}\n射擊口令：全排榴彈、效力射準備好放！`[span_10](start_span)[span_10](end_span);
       }
 
       document.getElementById('handwheelTurnsDisplay').innerHTML = turnText;
       document.getElementById('commandOutputBox').innerText = cmdText;
 
+      const missionColor = getDistinctColor(effectFireHistory.length + 1);
+      effectFireHistory.push({
+        id: effectFireHistory.length + 1,
+        targetId: targetName,
+        sheafName: sheafName,
+        color: missionColor,
+        turnsText: turnText,
+        cmdText: cmdText,
+        guns: gunElements,
+        area: { centerX: newX, centerY: newY, width: areaW, depth: areaD, azOT: azOT }
+      });
+
+      renderEffectHistoryUI();
       calculateAndDraw();
     }
 
-    // 初始化啟動
+    /* 渲染第一點要求：效力射全履歷紀錄 UI */
+    function renderEffectHistoryUI() {
+      const container = document.getElementById('effectHistoryContainer');
+      container.innerHTML = '';
+
+      if (effectFireHistory.length === 0) {
+        container.innerHTML = `<div style="font-size:0.75rem; color:#8395a7; text-align:center;">尚無效力射歷史紀錄</div>`;
+        return;
+      }
+
+      effectFireHistory.slice().reverse().forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'history-card';
+        card.style.borderColor = item.color;
+        card.innerHTML = `
+          <div style="font-weight:bold; color:${item.color}; display:flex; justify-space-between;">
+            <span>任務 #${item.id} - 目標: ${item.targetId}</span>
+            <span>${item.sheafName}</span>
+          </div>
+          <div style="margin-top:4px; color:#e0e6ed;">${item.turnsText}</div>
+          <div style="margin-top:4px; font-family:monospace; color:#4cd137; white-space:pre-wrap;">${item.cmdText}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 程式啟動初始化
     initOpData();
     initDefaultTargets();
     calculateAndDraw();
