@@ -1563,18 +1563,24 @@
 
       const dirType = document.getElementById('corrDirType').value;
       let shiftW = 0;
+      let dirCmdStr = '原方向';
       if (dirType !== 'line') {
-        const dirSign = document.getElementById('corrDirSign').value === 'right' ? 1 : -1;
+        const isRight = document.getElementById('corrDirSign').value === 'right';
+        const dirSign = isRight ? 1 : -1;
         const dirVal = parseFloat(document.getElementById('corrDirVal').value) || 0;
         shiftW = (dirType === 'mil') ? (dirVal * distOT / 1000) * dirSign : dirVal * dirSign;
+        dirCmdStr = `${isRight ? '右' : '左'} ${dirVal}${dirType === 'mil' ? '密位' : '米'}`;
       }
 
       const distSignVal = document.getElementById('corrDistSign').value;
       let shiftR = 0;
+      let distCmdStr = '原距離';
       if (distSignVal !== 'good') {
-        const distSign = distSignVal === 'add' ? 1 : -1;
+        const isAdd = distSignVal === 'add';
+        const distSign = isAdd ? 1 : -1;
         const distVal = parseFloat(document.getElementById('corrDistVal').value) || 0;
         shiftR = distVal * distSign;
+        distCmdStr = `${isAdd ? '加' : '減'} ${distVal}米`;
       }
 
       const deltaX = shiftR * Math.sin(radOT) + shiftW * Math.cos(radOT);
@@ -1585,6 +1591,8 @@
         shotNum: newShotNum, targetId: targetId,
         x: parentX + deltaX, y: parentY + deltaY,
         parentX: parentX, parentY: parentY,
+        azOT: azOT, distOT: distOT,
+        cmdStr: `${dirCmdStr}，${distCmdStr}`,
         color: getDistinctColor(newShotNum + 10)
       });
 
@@ -1648,18 +1656,24 @@
 
         const dirType = document.getElementById(`${item.prefix}DirType`).value;
         let shiftW = 0;
+        let dirCmdStr = '原方向';
         if (dirType !== 'line') {
-          const sign = document.getElementById(`${item.prefix}DirSign`).value === 'right' ? 1 : -1;
+          const isRight = document.getElementById(`${item.prefix}DirSign`).value === 'right';
+          const sign = isRight ? 1 : -1;
           const val = parseFloat(document.getElementById(`${item.prefix}DirVal`).value) || 0;
           shiftW = (dirType === 'mil') ? (val * distOT / 1000) * sign : val * sign;
+          dirCmdStr = `${isRight ? '右' : '左'} ${val}${dirType === 'mil' ? '密位' : '米'}`;
         }
 
         const distSignVal = document.getElementById(`${item.prefix}DistSign`).value;
         let shiftR = 0;
+        let distCmdStr = '原距離';
         if (distSignVal !== 'good') {
-          const sign = distSignVal === 'add' ? 1 : -1;
+          const isAdd = distSignVal === 'add';
+          const sign = isAdd ? 1 : -1;
           const val = parseFloat(document.getElementById(`${item.prefix}DistVal`).value) || 0;
           shiftR = val * sign;
+          distCmdStr = `${isAdd ? '加' : '減'} ${val}米`;
         }
 
         const deltaX = shiftR * Math.sin(radOT) + shiftW * Math.cos(radOT);
@@ -1668,6 +1682,7 @@
         roundShots.push({
           gunId: item.id, color: item.color,
           x: baseGunX + deltaX, y: baseGunY + deltaY,
+          cmdStr: `${dirCmdStr}，${distCmdStr}`,
           parentX: baseGunX, parentY: baseGunY
         });
       });
@@ -1915,89 +1930,138 @@
       });
     }
 
-    /* 全原生相容 PDF / 系統列印輸出引擎 */
-    function generatePoLangPDF() {
-      const canvasImg = canvas.toDataURL('image/png');
-      const band = document.getElementById('mgrsBand').value || 'R';
-      const sq = document.getElementById('mgrsSq').value || 'TK';
-      const opE = document.getElementById('opE8').value || '4999';
-      const opN = document.getElementById('opN8').value || '1962';
-      const opAlt = document.getElementById('opAlt').value || '100';
+    /* 方案 B：使用原生 Web Share API 產製與分享 PDF (可手動選擇資料夾/LINE傳送) */
+    async function generatePoLangPDF() {
+      try {
+        const jsPDFLib = window.jspdf ? window.jspdf.jsPDF : (window.jsPDF || null);
+        if (!jsPDFLib) {
+          alert("⚠️ PDF 組件初始化中，請稍後再試。");
+          return;
+        }
 
-      let targetsListHtml = '';
-      globalTargets.forEach(t => {
-        targetsListHtml += `<li><b>目標 ${t.id}</b>: 相對OP (E: ${Math.round(t.x)}m, N: ${Math.round(t.y)}m) | 標高: ${t.alt}m</li>`;
-      });
+        const pdf = new jsPDFLib('p', 'mm', 'a4');
+        const canvasImg = canvas.toDataURL('image/png');
+        
+        // --- 頁面 1：基本諸元與 M10 圖板總覽 ---
+        pdf.setFontSize(16);
+        pdf.text("PoLang Tactical FDC Report (M10)", 15, 15);
+        
+        pdf.setFontSize(10);
+        const band = document.getElementById('mgrsBand').value || 'R';
+        const sq = document.getElementById('mgrsSq').value || 'TK';
+        const opE = document.getElementById('opE8').value || '4999';
+        const opN = document.getElementById('opN8').value || '1962';
+        const opAlt = document.getElementById('opAlt').value || '100';
 
-      let historyHtml = '';
-      effectFireHistory.forEach(item => {
-        let gunRows = '';
-        item.guns.forEach(g => {
-          gunRows += `<tr><td>${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
+        pdf.text(`Grid Header: 51${band} ${sq} | Time: ${new Date().toLocaleString()}`, 15, 22);
+        pdf.text(`OP Position: 51${band} ${sq} ${opE} ${opN} (Alt: ${opAlt}m)`, 15, 27);
+
+        pdf.addImage(canvasImg, 'PNG', 15, 32, 180, 180);
+
+        let yPos = 218;
+        pdf.setFontSize(12);
+        pdf.text("[Target List]", 15, yPos);
+        pdf.setFontSize(9);
+        yPos += 6;
+        globalTargets.forEach(t => {
+          pdf.text(`* Target ${t.id}: Rel OP (E:${Math.round(t.x)}m, N:${Math.round(t.y)}m) | Alt: ${t.alt}m`, 15, yPos);
+          yPos += 5;
         });
-        historyHtml += `
-          <div style="border:1px solid #333; padding:8px; margin-bottom:10px; page-break-inside:avoid;">
-            <div style="font-weight:bold;">任務 #${item.id} [${item.targetId}] - ${item.sheafName}</div>
-            <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
-              <thead><tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
-              <tbody>${gunRows}</tbody>
-            </table>
-            <div style="font-size:11px;">${item.turnsText}</div>
-            <div style="font-family:monospace; font-size:11px; margin-top:4px; white-space:pre-wrap;">${item.cmdText}</div>
-          </div>
-        `;
-      });
 
-      const printWin = window.open('', '_blank');
-      if (!printWin) {
-        alert("⚠️ 系統彈出視窗被攔截，請允許彈出視窗後再試一次！");
-        return;
+        // --- 頁面 2：觀測員射擊修正記錄表 (觀修過程) ---
+        pdf.addPage();
+        yPos = 15;
+        pdf.setFontSize(14);
+        pdf.text("[Observer Trial Shot Correction Log (#2 Gun)]", 15, yPos);
+        yPos += 8;
+        pdf.setFontSize(9);
+
+        if (correctionShots.length === 0) {
+          pdf.text("No Trial Shot Correction Records.", 15, yPos);
+          yPos += 8;
+        } else {
+          correctionShots.forEach(shot => {
+            if (yPos > 270) { pdf.addPage(); yPos = 15; }
+            pdf.text(`Shot #${shot.shotNum} (${shot.targetId}): OT_Az:${shot.azOT} mil, OT_Dist:${shot.distOT}m | Cmd: ${shot.cmdStr}`, 15, yPos);
+            yPos += 5;
+          });
+          yPos += 4;
+        }
+
+        pdf.setFontSize(14);
+        pdf.text("[Observer Wing Shot Correction Log (#1 & #3 Guns)]", 15, yPos);
+        yPos += 8;
+        pdf.setFontSize(9);
+
+        if (wingShotRounds.length === 0) {
+          pdf.text("No Wing Shot Correction Records.", 15, yPos);
+          yPos += 8;
+        } else {
+          wingShotRounds.forEach(round => {
+            if (yPos > 270) { pdf.addPage(); yPos = 15; }
+            pdf.text(`Round #${round.roundNum} (${round.targetId}):`, 15, yPos);
+            yPos += 5;
+            round.shots.forEach(s => {
+              pdf.text(`   Gun ${s.gunId}: Cmd: ${s.cmdStr} | Pos: (E:${Math.round(s.x)}m, N:${Math.round(s.y)}m)`, 15, yPos);
+              yPos += 4;
+            });
+            yPos += 2;
+          });
+        }
+
+        // --- 頁面 3：效力射歷史履歷與口令表 ---
+        pdf.addPage();
+        yPos = 15;
+        pdf.setFontSize(14);
+        pdf.text("[Effect Fire Mission Log & Commands]", 15, yPos);
+        yPos += 8;
+
+        effectFireHistory.forEach((item) => {
+          if (yPos > 260) { pdf.addPage(); yPos = 15; }
+          pdf.setFontSize(10);
+          pdf.text(`Mission #${item.id} [${item.targetId}] - ${item.sheafName}`, 15, yPos);
+          yPos += 5;
+
+          pdf.setFontSize(9);
+          item.guns.forEach(g => {
+            pdf.text(`   ${g.gunId} Gun: Bearing ${g.az.toString().padStart(4, '0')} mil | Dist ${g.dist}m | dH ${g.deltaH}m`, 15, yPos);
+            yPos += 4;
+          });
+
+          pdf.setFontSize(8);
+          pdf.text(`   Cmd: ${item.cmdText.replace(/\n/g, ' / ')}`, 15, yPos);
+          yPos += 7;
+        });
+
+        // 方案 B：產製 File 並呼叫 Android 系統原生分享/存檔選單
+        const fileName = `PoLang_Report_${new Date().toISOString().slice(0,10)}.pdf`;
+        const pdfBlob = pdf.output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+          await navigator.share({
+            title: '破浪戰術射擊指揮紀錄報告',
+            text: 'M10 戰術射擊指揮報告 PDF',
+            files: [pdfFile]
+          });
+        } else {
+          // 容錯機制：若環境不支援 Web Share API，改為 Blob 下載觸發
+          const blobUrl = URL.createObjectURL(pdfBlob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+          alert(`✅ 已觸發下載，檔案名稱為：${fileName}`);
+        }
+
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          alert(`產製/分享 PDF 時發生錯誤：${err.message}`);
+        }
       }
-
-      printWin.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>破浪戰術射擊指揮紀錄報告 (M10)</title>
-          <style>
-            body { font-family: sans-serif; padding: 15px; color: #000; background: #fff; }
-            h2 { margin-bottom: 5px; }
-            .meta-info { font-size: 13px; margin-bottom: 15px; }
-            .img-container { text-align: center; margin: 15px 0; }
-            .img-container img { max-width: 80%; border: 1px solid #000; border-radius: 50%; }
-            ul { font-size: 13px; line-height: 1.5; }
-            @media print {
-              body { padding: 0; }
-              button { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <h2>破浪戰術射擊指揮紀錄報告 (M10)</h2>
-          <div class="meta-info">
-            <b>網格頭標:</b> 51${band} ${sq} | <b>產製時間:</b> ${new Date().toLocaleString()}<br>
-            <b>觀測所 (OP):</b> 51${band} ${sq} ${opE} ${opN} (標高: ${opAlt}m)
-          </div>
-          
-          <div class="img-container">
-            <img src="${canvasImg}" />
-          </div>
-
-          <h3>【目標點座標清單】</h3>
-          <ul>${targetsListHtml}</ul>
-
-          <h3 style="page-break-before:always; margin-top:20px;">【效力射歷史履歷與口令表】</h3>
-          ${historyHtml || '<div>尚無效力射歷史紀錄</div>'}
-
-          <script>
-            window.onload = function() {
-              window.print();
-            };
-          <\/script>
-        </body>
-        </html>
-      `);
-      printWin.document.close();
     }
 
     initDefaultTargets();
