@@ -114,7 +114,7 @@
     .canvas-container {
       position: relative;
       width: 100%;
-      height: 100%;
+      flex: 1;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -124,8 +124,28 @@
       background-color: #172026;
       box-shadow: 0 0 25px rgba(0,0,0,0.9);
       border-radius: 50%;
-      max-width: 96vw;
-      max-height: 96vw;
+      max-width: 92vw;
+      max-height: 92vw;
+    }
+
+    .board-layer-bar {
+      width: 100%;
+      background-color: rgba(28, 38, 47, 0.95);
+      border-top: 1px solid #00a8ff;
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-around;
+      gap: 6px;
+      z-index: 500;
+      flex-shrink: 0;
+    }
+    .board-layer-bar label {
+      font-size: 0.75rem;
+      color: #e0e6ed;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
     }
 
     #mapViewContainer {
@@ -165,7 +185,7 @@
 
     .board-hint {
       position: absolute;
-      bottom: 8px;
+      bottom: 40px;
       color: #8395a7;
       font-size: 0.72rem;
       background-color: rgba(0,0,0,0.75);
@@ -801,14 +821,22 @@
         <canvas id="boardCanvas" width="760" height="760"></canvas>
       </div>
       <div class="board-hint" id="viewHint">💡 雙指滑動可旋轉與縮放 (最高2000%)｜單指拖曳平移</div>
+      
+      <!-- M10 圖板專用底部圖層勾選表 -->
+      <div class="board-layer-bar">
+        <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
+        <label><input type="checkbox" id="boardLayerTrial" checked onchange="calculateAndDraw()"> ⊕ #2砲試射彈著點</label>
+        <label><input type="checkbox" id="boardLayerWing" checked onchange="calculateAndDraw()"> ◆ #1/#3砲翼次彈著</label>
+        <label><input type="checkbox" id="boardLayerEffect" checked onchange="calculateAndDraw()"> 🔲 效力射涵蓋區</label>
+      </div>
     </div>
 
     <div id="mapViewContainer">
       <div id="mapView"></div>
       <div class="map-layer-bar">
         <label><input type="checkbox" id="layerTarget" checked onchange="updateMapMarkers()"> 🎯 目標點</label>
-        <label><input type="checkbox" id="layerTrial" checked onchange="updateMapMarkers()"> 💥 #2砲試射彈著點</label>
-        <label><input type="checkbox" id="layerWing" checked onchange="updateMapMarkers()"> 🚀 #1/#3砲翼次彈著</label>
+        <label><input type="checkbox" id="layerTrial" checked onchange="updateMapMarkers()"> ⊕ #2砲試射彈著點</label>
+        <label><input type="checkbox" id="layerWing" checked onchange="updateMapMarkers()"> ◆ #1/#3砲翼次彈著</label>
         <label><input type="checkbox" id="layerEffect" checked onchange="updateMapMarkers()"> 🔲 效力射涵蓋區</label>
       </div>
     </div>
@@ -1372,12 +1400,74 @@
       ctx.restore();
     }
 
-    function drawPoint(pos, label, color, r = 4.5) {
+    // --- 方案 A 繪製圖形輔助函式 ---
+    
+    // 繪製目標點 (實心圓點)
+    function drawTargetPoint(pos, label, color) {
+      const r = 4.5;
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
       ctx.fillStyle = color; ctx.fill();
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
       ctx.fillText(label, pos.x + r + 3, pos.y - r - 2);
+    }
+
+    // 繪製 #2砲試射點 (十字瞄準圓圈 ⊕)
+    function drawTrialShotPoint(pos, label, color) {
+      const r = 5.5;
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
+      
+      // 十字線
+      ctx.beginPath();
+      ctx.moveTo(pos.x - r - 2, pos.y); ctx.lineTo(pos.x + r + 2, pos.y);
+      ctx.moveTo(pos.x, pos.y - r - 2); ctx.lineTo(pos.x, pos.y + r + 2);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+
+      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(label, pos.x + r + 4, pos.y - r - 2);
+    }
+
+    // 繪製 #1/#3砲翼次射點 (菱形 ◆)
+    function drawWingShotPoint(pos, label, color) {
+      const sz = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y - sz);
+      ctx.lineTo(pos.x + sz, pos.y);
+      ctx.lineTo(pos.x, pos.y + sz);
+      ctx.lineTo(pos.x - sz, pos.y);
+      ctx.closePath();
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
+
+      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(label, pos.x + sz + 3, pos.y - sz - 2);
+    }
+
+    // 繪製效力射中心點 (五角爆破星型 ★)
+    function drawStar(cx, cy, spikes, outerRadius, innerRadius, color) {
+      let rot = Math.PI / 2 * 3;
+      let x = cx, y = cy;
+      let step = Math.PI / spikes;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - outerRadius);
+      for (let i = 0; i < spikes; i++) {
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+      }
+      ctx.lineTo(cx, cy - outerRadius);
+      ctx.closePath();
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
     }
 
     function calculateAndDraw() {
@@ -1480,44 +1570,74 @@
         tbody.appendChild(tr); relTbody.appendChild(relTr);
       });
 
-      globalTargets.forEach((t, idx) => drawPoint(xyToCanvas(t.x, t.y), t.id, getDistinctColor(idx), 5));
-      globalGuns.forEach(g => drawPoint(xyToCanvas(g.x, g.y), g.id, '#ff4757', 3.5));
+      // --- M10 圖板分層控制開關讀取 ---
+      const showBoardTarget = document.getElementById('boardLayerTarget').checked;
+      const showBoardTrial = document.getElementById('boardLayerTrial').checked;
+      const showBoardWing = document.getElementById('boardLayerWing').checked;
+      const showBoardEffect = document.getElementById('boardLayerEffect').checked;
 
-      correctionShots.forEach(shot => {
-        const pos = xyToCanvas(shot.x, shot.y);
-        drawPoint(pos, `第${shot.shotNum}發`, shot.color, 4);
-        const basePos = xyToCanvas(shot.parentX, shot.parentY);
-        ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
-        ctx.strokeStyle = shot.color; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+      // 1. 繪製目標點 (點目標)
+      if (showBoardTarget) {
+        globalTargets.forEach((t, idx) => drawTargetPoint(xyToCanvas(t.x, t.y), t.id, getDistinctColor(idx)));
+      }
+
+      // 2. 繪製砲陣地位置
+      globalGuns.forEach(g => {
+        const pos = xyToCanvas(g.x, g.y);
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ff4757'; ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = '#ff4757'; ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(g.id, pos.x + 6, pos.y - 5);
       });
 
-      wingShotRounds.forEach(round => {
-        round.shots.forEach(shot => {
+      // 3. 繪製 #2砲試射點 (十字瞄準圓圈 ⊕)
+      if (showBoardTrial) {
+        correctionShots.forEach(shot => {
           const pos = xyToCanvas(shot.x, shot.y);
-          drawPoint(pos, `${shot.gunId}(${round.roundNum})`, shot.color, 4);
+          drawTrialShotPoint(pos, `第${shot.shotNum}發`, shot.color);
           const basePos = xyToCanvas(shot.parentX, shot.parentY);
           ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
-          ctx.strokeStyle = shot.color; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+          ctx.strokeStyle = shot.color; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
         });
-      });
+      }
 
-      effectFireHistory.forEach(item => {
-        if (!item.area) return;
-        const posCenter = xyToCanvas(item.area.centerX, item.area.centerY);
-        const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
-        const wPx = (item.area.width / maxRange) * scaledBoardRadius;
-        const dPx = (item.area.depth / maxRange) * scaledBoardRadius;
+      // 4. 繪製 #1/#3砲翼次射點 (菱形 ◆)
+      if (showBoardWing) {
+        wingShotRounds.forEach(round => {
+          round.shots.forEach(shot => {
+            const pos = xyToCanvas(shot.x, shot.y);
+            drawWingShotPoint(pos, `${shot.gunId}(${round.roundNum})`, shot.color);
+            const basePos = xyToCanvas(shot.parentX, shot.parentY);
+            ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = shot.color; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+          });
+        });
+      }
 
-        ctx.save();
-        ctx.translate(posCenter.x, posCenter.y);
-        ctx.rotate(-milToRad(boardRotationMil - item.area.azOT));
-        ctx.fillStyle = item.color.replace('hsl', 'hsla').replace(')', ', 0.25)');
-        ctx.strokeStyle = item.color;
-        ctx.lineWidth = 1.5;
-        ctx.fillRect(-wPx / 2, -dPx / 2, wPx, dPx);
-        ctx.strokeRect(-wPx / 2, -dPx / 2, wPx, dPx);
-        ctx.restore();
-      });
+      // 5. 繪製效力射涵蓋區與中心星型 (五角爆破星型 ★)
+      if (showBoardEffect) {
+        effectFireHistory.forEach(item => {
+          if (!item.area) return;
+          const posCenter = xyToCanvas(item.area.centerX, item.area.centerY);
+          const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
+          const wPx = (item.area.width / maxRange) * scaledBoardRadius;
+          const dPx = (item.area.depth / maxRange) * scaledBoardRadius;
+
+          ctx.save();
+          ctx.translate(posCenter.x, posCenter.y);
+          ctx.rotate(-milToRad(boardRotationMil - item.area.azOT));
+          ctx.fillStyle = item.color.replace('hsl', 'hsla').replace(')', ', 0.25)');
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(-wPx / 2, -dPx / 2, wPx, dPx);
+          ctx.strokeRect(-wPx / 2, -dPx / 2, wPx, dPx);
+          ctx.restore();
+
+          // 中心繪製爆破星型
+          drawStar(posCenter.x, posCenter.y, 5, 7, 3.5, item.color);
+        });
+      }
 
       if (currentTab === 'tab2') renderCorrectionResultTable();
       if (currentMainView === 'map') updateMapMarkers();
@@ -1929,7 +2049,7 @@
       });
     }
 
-    /* 相容性高之系統原生列印/PDF存檔輸出引擎 */
+    /* 系統原生列印/PDF存檔輸出引擎 */
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
       const band = document.getElementById('mgrsBand').value || 'R';
