@@ -210,7 +210,6 @@
       overflow-y: auto;
     }
 
-    /* 修正子分頁列：解決 1, 4, 5 按鈕被切掉與出現藍色滾動條的問題 */
     .tab-header {
       display: flex;
       background-color: #28313e;
@@ -218,16 +217,16 @@
       padding: 3px;
       gap: 2px;
       width: 100%;
-      overflow: hidden; /* 移除滾動條 */
+      overflow: hidden;
     }
     .tab-btn {
-      flex: 1 1 0; /* 均勻平分寬度 */
-      min-width: 0; /* 允許自動收縮 */
+      flex: 1 1 0;
+      min-width: 0;
       padding: 7px 1px;
       border: none;
       background-color: transparent;
       color: #8395a7;
-      font-size: 0.72rem;
+      font-size: 0.75rem;
       font-weight: bold;
       border-radius: 4px;
       text-align: center;
@@ -432,27 +431,6 @@
       margin-top: 6px;
       font-size: 0.75rem;
     }
-
-    /* 教範標準扇形圖專用 Canvas 樣式 */
-    .fan-canvas-container {
-      width: 100%;
-      background-color: #fdfbf2;
-      border: 1px solid #c8d6e5;
-      border-radius: 6px;
-      padding: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-top: 8px;
-    }
-    #fanCanvas {
-      background-color: #fdfbf2;
-      border: 1px solid #222;
-      width: 100%;
-      height: auto;
-      border-radius: 0;
-      box-shadow: none;
-    }
   </style>
 </head>
 <body>
@@ -467,13 +445,11 @@
   <div class="app-container">
     
     <div class="sidebar" id="sidebarContainer">
-      <!-- 修正後的分頁標頭：確保 5 個按鈕完美平鋪不被滾動條遮擋 -->
       <div class="tab-header">
         <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1.諸元圖解</button>
-        <button class="tab-btn" id="tabFanBtn" onclick="switchTab('tabFan')">2.扇形圖</button>
-        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">3.落彈修正</button>
-        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">4.翼次射</button>
-        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">5.效力射</button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">2.落彈修正</button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">3.翼次射</button>
+        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">4.效力射</button>
       </div>
 
       <div class="dial-control-group">
@@ -612,34 +588,6 @@
             <thead><tr id="relativeTableHeader"><th>砲位 \ 目標</th></tr></thead>
             <tbody id="relativeTableBody"></tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- 2. 教範標準「目標扇形圖」專屬頁面 (完全依據 05036 圖 5-29、圖 5-30 繪製) -->
-      <div id="tabFanContent" style="display: none;">
-        <div class="input-group">
-          <div class="section-title">教範目標扇形圖參數設定 (05036 規範)</div>
-          <div class="input-row">
-            <label>左射界密位 (Left Sector):</label>
-            <input type="number" id="fanLeftAz" value="0600" step="10" inputmode="numeric" onchange="drawFanDiagramPage()">
-          </div>
-          <div class="input-row">
-            <label>右射界密位 (Right Sector):</label>
-            <input type="number" id="fanRightAz" value="1800" step="10" inputmode="numeric" onchange="drawFanDiagramPage()">
-          </div>
-          <div class="input-row">
-            <label>最小涵蓋距離 R_min (m):</label>
-            <input type="number" id="fanMinRange" value="500" step="50" inputmode="numeric" onchange="drawFanDiagramPage()">
-          </div>
-          <div class="input-row">
-            <label>最大涵蓋距離 R_max (m):</label>
-            <input type="number" id="fanMaxRange" value="3000" step="50" inputmode="numeric" onchange="drawFanDiagramPage()">
-          </div>
-        </div>
-
-        <div class="section-title">目標扇形圖紙預覽 (圖 5-30 樣式)</div>
-        <div class="fan-canvas-container">
-          <canvas id="fanCanvas" width="600" height="520"></canvas>
         </div>
       </div>
 
@@ -916,7 +864,6 @@
       </div>
       <div class="board-hint" id="viewHint">💡 雙指滑動可旋轉與縮放 (最高2000%)｜單指拖曳平移</div>
       
-      <!-- M10 圖板底部圖層切換列 (已取消扇形圖疊加) -->
       <div class="board-layer-bar">
         <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
         <label><input type="checkbox" id="boardLayerTrial" checked onchange="calculateAndDraw()"> ⊕ #2砲試射彈著點</label>
@@ -941,6 +888,9 @@
   <script src="https://cdn.jsdelivr.net/npm/mgrs@2.0.0/dist/mgrs.min.js"></script>
 
   <script>
+    /* 81 迫砲排「破浪」Logo 商標 (包含鯊魚標誌與文字樣式) */
+    const poLangLogoBase64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/2wBDARERER4RHGQaGGpjSC1qa2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2tra2v/wgARCAHgAeADASIAAhEBAxEB/8QAGgABAQEBAQEBAAAAAAAAAAAAAAECAwQFBv/EABcBAQEBAQAAAAAAAAAAAAAAAAABAgP/2gAMA0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0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_______________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_______________/aAAgBAgIGPwC5/8QAGBEBAAMBA_______________/aAAgBAwIGPwC5/9oACAEBAAY/AOH+0f1L9i4vN5/f/N3S4Xm9/X7f29/UuXxd/qX9m+1f07y5X4Xyv1/l8S93v8AfeLpdrx/P/41x4eX3b4/m/S+/h5fffl8/nL/AHH5a+bxO+f9d9v1/wAvy8/53x9e92/f8v8AtXy9fxfqP1O8v1O8/v8A8vF7y/Svhxvea5X/AM18i+fxdfp3S9X+v/N/F40vfE4ne53/AMm+Lxpe+Lxe+N7ze/Uv39+m5f0L+3f7Vxea41fC5v8A+3/aP29Lze9Xm5drxeal+23K5Xze953x+a4vGrlyv19y8/Xm8539S86vO95vHl8L9jX2fC48vvebzu1/wD39S4aXm6Xy84/Xn/UuePGr4/U7XNfGvh/Uv8A/v/aAAgBAQMBPyD/AH6pU9N6f4d3+Hf23+Hf27vP/wATv+HdP8Oqfr0v4dfqX+Ovh1/fX5Ovw46X0X8Ov5de/Rfi39p/Dv3+u/3L+Hf1d38+6f33d/N1/P8Ah0r8u6/o4/1/N/k/m/Bf06/D/R19Gve/03+nX0mvw6/n3fx6/N1fzr9vUfzr27+fX8+vw7r+j/T/AMd/Bv7b9x/41v696/PvX/mOvw41fzb+3ev0ddf6d6X9e/s1+3r1XpX8fX8mrt9q61+7f3e/l66/H/R/JpXX6un+T+bf5dflx9zX/jX7Ovl66/f/AC61+/8Apf046X5d7frfzr8m/k441u35Ovy4v6fW9fzX92v/AHX/AAa/r7f5+d3X4f49fzfg/wBGr4eP9H/5Fv3evyf27v8A3O4dLx//2gAIAQEDAT8h+f8A09evp2s6+lU3114999etfp6/l1X0+/2d/f8AmfHr03099er3v43x6fr6b8X63X+H9Gv1fp2r31XG/oX/AJ13evU3+Xf4d1eN/D1/Bvt+/X7u3qP/ACdeq/fvw9/h+fdfy6f83/h3p34e6+fVfya/Lq6++n9+a3eOte9X9f3a9e+y+f1/w1Xnrfp/eOn1/m9G78Ov/J+vXvXv39Xm6/s6v/AAnW7/R/Hr8mv5+6dPz7/B+zV+1/X3f+Xv0b1r9nr8n4X365/q3/AJ+9evx/Lp/3O+9er8+3Wv5N+HX8G/Bfv/1+HX73/dr3fzf4Nfl46fl1r9vS/i/rX/l/P/R/O9Xfw6/f/fX5P59fn/v0f4d/w37/AEe//9oACAGEAAwEFAH/m2/8a3/i2/wD3S3/m2/8Ah2/8y3/w4pU4pU44xSpxfpxxSpx/4lv/AM2/p4//2gAIAQIDAT8QH4f/2gAIAQMDAT8QH4f/2gAIAQEBBj8A+f8Acv3qX6d/X3/C3eX6Vf0f6ly+D9C4vUuL9q/av199pfxr9y/T/S/e/R43ze/3b+nf2L4/w18H9K/cvN3xe/x4/b/o3z41f5/k5frX9e8eL3ze/wBq86fXf1/2P3b5eL4mvt4fTf075/d87x5eeP2b9S31/U+d8T1/t0/cvh+Z5Xn6f3fveX9u/Hnxe7v3/cv1LzePH93S/Bf0P07y++95eN/a4+pce/fC/8Av/sXy8fl+Lz/AEebxePH7d4X58/f/9k=";
+
     const canvas = document.getElementById('boardCanvas');
     const ctx = canvas.getContext('2d');
     const canvasContainer = document.getElementById('canvasContainer');
@@ -971,7 +921,6 @@
     let map = null;
     let mapMarkersGroup = null;
 
-    // 螢幕恆亮機制
     async function toggleKeepAwake(enable) {
       if (enable) {
         try {
@@ -1249,20 +1198,17 @@
     function switchTab(tab) {
       currentTab = tab;
       document.getElementById('tab1Btn').classList.toggle('active', tab === 'tab1');
-      document.getElementById('tabFanBtn').classList.toggle('active', tab === 'tabFan');
       document.getElementById('tab2Btn').classList.toggle('active', tab === 'tab2');
       document.getElementById('tab3Btn').classList.toggle('active', tab === 'tab3');
       document.getElementById('tab4Btn').classList.toggle('active', tab === 'tab4');
       
       document.getElementById('tab1Content').style.display = (tab === 'tab1') ? 'block' : 'none';
-      document.getElementById('tabFanContent').style.display = (tab === 'tabFan') ? 'block' : 'none';
       document.getElementById('tab2Content').style.display = (tab === 'tab2') ? 'block' : 'none';
       document.getElementById('tab3Content').style.display = (tab === 'tab3') ? 'block' : 'none';
       document.getElementById('tab4Content').style.display = (tab === 'tab4') ? 'block' : 'none';
 
       populateTargetSelects();
       if (tab === 'tab2') updateOTDataDisplay();
-      if (tab === 'tabFan') drawFanDiagramPage();
       calculateAndDraw();
     }
 
@@ -1589,167 +1535,6 @@
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
     }
 
-    /* 完全依據 05036 教範 圖 5-29 & 圖 5-30 繪製專屬目標扇形圖 */
-    function drawFanDiagramPage() {
-      const fanCv = document.getElementById('fanCanvas');
-      if (!fanCv) return;
-      const fCtx = fanCv.getContext('2d');
-      const w = fanCv.width, h = fanCv.height;
-
-      fCtx.clearRect(0, 0, w, h);
-      fCtx.fillStyle = '#fdfbf2';
-      fCtx.fillRect(0, 0, w, h);
-
-      // 外外框線
-      fCtx.strokeStyle = '#222222';
-      fCtx.lineWidth = 1.5;
-      fCtx.strokeRect(10, 10, w - 20, h - 20);
-
-      // OP 觀測員基準點 (中央下方紅色三角形)
-      const opX = w / 2;
-      const opY = h - 35;
-
-      const lAz = parseFloat(document.getElementById('fanLeftAz').value) || 600;
-      const rAz = parseFloat(document.getElementById('fanRightAz').value) || 1800;
-      const minR = parseFloat(document.getElementById('fanMinRange').value) || 500;
-      const maxR = parseFloat(document.getElementById('fanMaxRange').value) || 3000;
-
-      const radiusPx = h - 100;
-
-      // 繪製正北方向標示 (W / 正北箭頭)
-      fCtx.save();
-      fCtx.translate(35, 45);
-      fCtx.beginPath();
-      fCtx.moveTo(0, 15); fCtx.lineTo(0, -20);
-      fCtx.strokeStyle = '#d63031'; fCtx.lineWidth = 2; fCtx.stroke();
-      fCtx.beginPath();
-      fCtx.moveTo(-5, -12); fCtx.lineTo(0, -20); fCtx.lineTo(5, -12);
-      fCtx.fillStyle = '#d63031'; fCtx.fill();
-      fCtx.font = 'bold 12px sans-serif'; fCtx.fillStyle = '#d63031';
-      fCtx.fillText('W', -5, -24);
-      fCtx.restore();
-
-      // 1. 繪製半圓/扇形輻射網格線 (教範圖 5-29 樣式)
-      fCtx.lineWidth = 0.8;
-      
-      // 方位角線 (每 100 密位)
-      const totalSweep = (rAz - lAz + 6400) % 6400;
-      const stepMil = 100;
-      for (let az = lAz; az <= rAz; az += stepMil) {
-        const relAngle = (az - lAz) / totalSweep;
-        // 從左到右展開弧度 (180度半圓區間)
-        const rad = Math.PI + (relAngle * Math.PI);
-        const xEnd = opX + radiusPx * Math.cos(rad);
-        const yEnd = opY + radiusPx * Math.sin(rad);
-
-        fCtx.beginPath();
-        fCtx.moveTo(opX, opY);
-        fCtx.lineTo(xEnd, yEnd);
-        fCtx.strokeStyle = (az % 200 === 0) ? '#27ae60' : 'rgba(39, 174, 96, 0.4)';
-        fCtx.stroke();
-
-        // 方位角數字標註
-        if (az % 100 === 0) {
-          const xTxt = opX + (radiusPx + 14) * Math.cos(rad);
-          const yTxt = opY + (radiusPx + 14) * Math.sin(rad);
-          fCtx.font = '10px sans-serif';
-          fCtx.fillStyle = '#27ae60';
-          fCtx.textAlign = 'center'; fCtx.textBaseline = 'middle';
-          fCtx.fillText(az.toString(), xTxt, yTxt);
-        }
-      }
-
-      // 距離同心圓弧線 (每 500m/1000m)
-      const numDistArcs = 6;
-      for (let i = 1; i <= numDistArcs; i++) {
-        const rRatio = i / numDistArcs;
-        const curRadius = radiusPx * rRatio;
-        const curDistM = Math.round(minR + (maxR - minR) * rRatio);
-
-        fCtx.beginPath();
-        fCtx.arc(opX, opY, curRadius, Math.PI, 2 * Math.PI, false);
-        fCtx.strokeStyle = (i % 2 === 0) ? '#e74c3c' : 'rgba(231, 76, 60, 0.4)';
-        fCtx.stroke();
-
-        // 距離標註
-        fCtx.font = '10px sans-serif';
-        fCtx.fillStyle = '#e74c3c';
-        fCtx.textAlign = 'left';
-        fCtx.fillText(`${curDistM}`, opX + curRadius - 15, opY + 12);
-        fCtx.textAlign = 'right';
-        fCtx.fillText(`${curDistM}`, opX - curRadius + 15, opY + 12);
-      }
-
-      // 2. 標繪當前目標點與觀目箭頭線 (教範圖 5-30 樣式)
-      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
-      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
-      const opAlt = parseFloat(document.getElementById('opAlt').value) || 100;
-
-      globalTargets.forEach((t, idx) => {
-        const dx = t.x, dy = t.y;
-        const distOT = Math.hypot(dx, dy);
-        let azOT = radToMil(Math.atan2(dx, dy));
-
-        if (azOT >= lAz && azOT <= rAz && distOT >= minR && distOT <= maxR) {
-          const relAngle = (azOT - lAz) / totalSweep;
-          const rad = Math.PI + (relAngle * Math.PI);
-          const distRatio = (distOT - minR) / (maxR - minR);
-          const tPxRadius = radiusPx * distRatio;
-
-          const tX = opX + tPxRadius * Math.cos(rad);
-          const tY = opY + tPxRadius * Math.sin(rad);
-
-          // 觀目箭頭射線
-          fCtx.beginPath();
-          fCtx.moveTo(opX, opY);
-          fCtx.lineTo(tX, tY);
-          fCtx.strokeStyle = '#2c3e50';
-          fCtx.lineWidth = 1.2;
-          fCtx.stroke();
-
-          // 箭頭
-          const arrowLen = 8;
-          fCtx.beginPath();
-          fCtx.moveTo(tX, tY);
-          fCtx.lineTo(tX - arrowLen * Math.cos(rad - 0.3), tY - arrowLen * Math.sin(rad - 0.3));
-          fCtx.lineTo(tX - arrowLen * Math.cos(rad + 0.3), tY - arrowLen * Math.sin(rad + 0.3));
-          fCtx.closePath();
-          fCtx.fillStyle = '#2c3e50';
-          fCtx.fill();
-
-          // 目標圖示
-          fCtx.beginPath();
-          fCtx.arc(tX, tY - 12, 5, 0, 2 * Math.PI);
-          fCtx.fillStyle = getDistinctColor(idx);
-          fCtx.fill();
-          fCtx.strokeStyle = '#222'; fCtx.lineWidth = 1; fCtx.stroke();
-
-          // 標註觀目諸元標籤 (Δh / OT)
-          const deltaH = t.alt - opAlt;
-          const signStr = deltaH >= 0 ? `+${deltaH}` : `${deltaH}`;
-          
-          fCtx.font = 'bold 10px sans-serif';
-          fCtx.fillStyle = '#111111';
-          fCtx.textAlign = 'center';
-          fCtx.fillText(`∠${Math.round(azOT)}`, tX, tY - 32);
-          fCtx.fillText(`Δ${signStr}`, tX, tY - 22);
-          fCtx.fillText(`OT${Math.round(distOT)}`, tX, tY - 12);
-        }
-      });
-
-      // 繪製觀測員 OP 紅色三角形基點
-      fCtx.beginPath();
-      fCtx.moveTo(opX, opY - 8);
-      fCtx.lineTo(opX + 8, opY + 6);
-      fCtx.lineTo(opX - 8, opY + 6);
-      fCtx.closePath();
-      fCtx.fillStyle = '#e74c3c';
-      fCtx.fill();
-      fCtx.strokeStyle = '#ffffff';
-      fCtx.lineWidth = 1.5;
-      fCtx.stroke();
-    }
-
     function calculateAndDraw() {
       globalGuns = [];
       globalTargets = [];
@@ -1913,7 +1698,6 @@
       }
 
       if (currentTab === 'tab2') renderCorrectionResultTable();
-      if (currentTab === 'tabFan') drawFanDiagramPage();
       if (currentMainView === 'map') updateMapMarkers();
     }
 
@@ -2325,11 +2109,9 @@
       });
     }
 
-    /* PDF 導出引擎：完全去除非必要表格與註記，並精準呈現教範扇形圖 */
+    /* PDF 導出引擎：包含 M10 射擊圖板、破浪 Logo 與全紀錄 */
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
-      drawFanDiagramPage();
-      const fanCanvasImg = document.getElementById('fanCanvas').toDataURL('image/png');
 
       const band = document.getElementById('mgrsBand').value || 'R';
       const sq = document.getElementById('mgrsSq').value || 'TK';
@@ -2439,7 +2221,7 @@
           </table>`;
       }
 
-      // 5. 計算過程展示區 (M10圖板交叉驗證程序，置於 PDF 最末區塊)
+      // 5. 計算過程展示區
       let calcStepsHtml = '';
       if (correctionShots.length > 0) {
         calcStepsHtml += `<h4>【#2砲 試射觀修向量推算步驟】</h4>`;
@@ -2487,10 +2269,12 @@
         <!DOCTYPE html>
         <html>
         <head>
-          <title>破浪戰術射擊指揮紀錄報告 (M10)</title>
+          <title>破浪戰術射擊指揮紀錄 (M10)</title>
           <style>
             body { font-family: sans-serif; padding: 15px; color: #000; background: #fff; }
-            h2 { margin-bottom: 5px; }
+            .header-title-box { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+            .header-title-box img { height: 36px; border-radius: 4px; border: 1px solid #e1b12c; }
+            .header-title-box h2 { margin: 0; font-size: 20px; font-weight: bold; }
             h3 { margin-top: 15px; margin-bottom: 5px; font-size: 13px; border-bottom: 1.5px solid #000; padding-bottom: 3px; }
             h4 { margin-top: 8px; margin-bottom: 4px; font-size: 12px; }
             .meta-info { font-size: 11px; margin-bottom: 8px; }
@@ -2504,7 +2288,11 @@
           </style>
         </head>
         <body>
-          <h2>破浪戰術射擊指揮紀錄報告 (M10)</h2>
+          <div class="header-title-box">
+            <img src="${poLangLogoBase64}" alt="破浪 Logo" />
+            <h2>破浪戰術射擊指揮紀錄 (M10)</h2>
+          </div>
+
           <div class="meta-info">
             <b>網格頭標:</b> 51${band} ${sq} | <b>產製時間:</b> ${new Date().toLocaleString()}<br>
             <b>觀測所 (OP):</b> 51${band} ${sq} ${opE} ${opN} (標高: ${opAlt}m)
@@ -2536,11 +2324,6 @@
 
           <h3>【效力射歷史履歷與口令表】</h3>
           ${historyHtml || '<div style="font-size:11px;">尚無效力射歷史紀錄</div>'}
-
-          <h3 style="page-break-before:always; margin-top:20px;">【教範目標扇形圖 (05036 規範)】</h3>
-          <div class="img-container">
-            <img src="${fanCanvasImg}" style="max-width:85%;" />
-          </div>
 
           <h3>【計算過程展示區 (M10圖板交叉驗證程序)】</h3>
           ${calcStepsHtml}
