@@ -442,12 +442,13 @@
   <div class="app-container">
     
     <div class="sidebar" id="sidebarContainer">
+      <!-- 修正後的分頁順序：1.諸元圖解 -> 2.扇形圖 -> 3.落彈修正 -> 4.翼次射 -> 5.效力射 -->
       <div class="tab-header">
         <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1. 諸元圖解</button>
-        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">2. 落彈修正</button>
-        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">3. 翼次射</button>
-        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">4. 效力射</button>
-        <button class="tab-btn" id="tabFanBtn" onclick="switchTab('tabFan')">5. 扇形圖</button>
+        <button class="tab-btn" id="tabFanBtn" onclick="switchTab('tabFan')">2. 扇形圖</button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">3. 落彈修正</button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">4. 翼次射</button>
+        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">5. 效力射</button>
       </div>
 
       <div class="dial-control-group">
@@ -586,6 +587,37 @@
             <thead><tr id="relativeTableHeader"><th>砲位 \ 目標</th></tr></thead>
             <tbody id="relativeTableBody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- 2. 扇形圖 (Fan Diagram) 設定 -->
+      <div id="tabFanContent" style="display: none;">
+        <div class="input-group">
+          <div class="section-title">扇形圖射界與射程設定 (Range & Sector Fan)</div>
+          <div class="input-row">
+            <label>左射界密位 (Left Sector):</label>
+            <input type="number" id="fanLeftAz" value="0600" step="10" inputmode="numeric" onchange="calculateAndDraw()">
+          </div>
+          <div class="input-row">
+            <label>右射界密位 (Right Sector):</label>
+            <input type="number" id="fanRightAz" value="1400" step="10" inputmode="numeric" onchange="calculateAndDraw()">
+          </div>
+          <div class="input-row">
+            <label>最小射程 R_min (死角區):</label>
+            <input type="number" id="fanMinRange" value="800" step="50" inputmode="numeric" onchange="calculateAndDraw()">
+          </div>
+          <div class="input-row">
+            <label>最大射程 R_max (極限):</label>
+            <input type="number" id="fanMaxRange" value="2800" step="50" inputmode="numeric" onchange="calculateAndDraw()">
+          </div>
+        </div>
+
+        <div class="result-box" style="border-color:#54a0ff;">
+          <div class="result-title" style="color:#54a0ff;">扇形圖戰術諸元摘要</div>
+          <div id="fanSummaryDisplay" style="font-size:0.75rem; line-height:1.5; color:#e0e6ed;">
+            - 射擊扇形總夾角：800 mil (45.0°)<br>
+            - 縱深射程涵蓋：2000 公尺 (800m - 2800m)
+          </div>
         </div>
       </div>
 
@@ -854,37 +886,6 @@
         </div>
       </div>
 
-      <!-- 5. 扇形圖 (Fan Diagram) 獨立頁面設定 -->
-      <div id="tabFanContent" style="display: none;">
-        <div class="input-group">
-          <div class="section-title">扇形圖射界與射程設定 (Fan Diagram)</div>
-          <div class="input-row">
-            <label>左射界密位 (Left Boundary):</label>
-            <input type="number" id="fanLeftAz" value="0600" step="10" inputmode="numeric" onchange="calculateAndDraw()">
-          </div>
-          <div class="input-row">
-            <label>右射界密位 (Right Boundary):</label>
-            <input type="number" id="fanRightAz" value="1400" step="10" inputmode="numeric" onchange="calculateAndDraw()">
-          </div>
-          <div class="input-row">
-            <label>最小射程 R_min (m):</label>
-            <input type="number" id="fanMinRange" value="800" step="50" inputmode="numeric" onchange="calculateAndDraw()">
-          </div>
-          <div class="input-row">
-            <label>最大射程 R_max (m):</label>
-            <input type="number" id="fanMaxRange" value="2800" step="50" inputmode="numeric" onchange="calculateAndDraw()">
-          </div>
-        </div>
-
-        <div class="result-box" style="border-color:#54a0ff;">
-          <div class="result-title" style="color:#54a0ff;">扇形圖戰術諸元摘要</div>
-          <div id="fanSummaryDisplay" style="font-size:0.75rem; line-height:1.5; color:#e0e6ed;">
-            - 射擊扇形總夾角：800 mil (45.0°)<br>
-            - 縱深射程涵蓋：2000 公尺 (800m - 2800m)
-          </div>
-        </div>
-      </div>
-
     </div>
 
     <div class="main-content" id="canvasMainContainer">
@@ -893,7 +894,7 @@
       </div>
       <div class="board-hint" id="viewHint">💡 雙指滑動可旋轉與縮放 (最高2000%)｜單指拖曳平移</div>
       
-      <!-- M10 圖板專用底部圖層勾選表 -->
+      <!-- M10 圖板底部圖層切換列 -->
       <div class="board-layer-bar">
         <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
         <label><input type="checkbox" id="boardLayerTrial" checked onchange="calculateAndDraw()"> ⊕ #2砲試射彈著點</label>
@@ -949,7 +950,7 @@
     let map = null;
     let mapMarkersGroup = null;
 
-    // 螢幕恆亮手動切換開關控制 (Keep Awake Toggle)
+    // 螢幕恆亮機制
     async function toggleKeepAwake(enable) {
       if (enable) {
         try {
@@ -970,6 +971,12 @@
         }
       }
     }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    });
 
     function getDistinctColor(index) {
       const hue = Math.round((index * 137.5) % 360);
@@ -1221,16 +1228,16 @@
     function switchTab(tab) {
       currentTab = tab;
       document.getElementById('tab1Btn').classList.toggle('active', tab === 'tab1');
+      document.getElementById('tabFanBtn').classList.toggle('active', tab === 'tabFan');
       document.getElementById('tab2Btn').classList.toggle('active', tab === 'tab2');
       document.getElementById('tab3Btn').classList.toggle('active', tab === 'tab3');
       document.getElementById('tab4Btn').classList.toggle('active', tab === 'tab4');
-      document.getElementById('tabFanBtn').classList.toggle('active', tab === 'tabFan');
       
       document.getElementById('tab1Content').style.display = (tab === 'tab1') ? 'block' : 'none';
+      document.getElementById('tabFanContent').style.display = (tab === 'tabFan') ? 'block' : 'none';
       document.getElementById('tab2Content').style.display = (tab === 'tab2') ? 'block' : 'none';
       document.getElementById('tab3Content').style.display = (tab === 'tab3') ? 'block' : 'none';
       document.getElementById('tab4Content').style.display = (tab === 'tab4') ? 'block' : 'none';
-      document.getElementById('tabFanContent').style.display = (tab === 'tabFan') ? 'block' : 'none';
 
       populateTargetSelects();
       if (tab === 'tab2') updateOTDataDisplay();
@@ -1497,7 +1504,6 @@
       ctx.restore();
     }
 
-    // 繪製目標點 (點目標)
     function drawTargetPoint(pos, label, color) {
       const r = 4.5;
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
@@ -1507,7 +1513,6 @@
       ctx.fillText(label, pos.x + r + 3, pos.y - r - 2);
     }
 
-    // 繪製 #2砲試射點 (十字瞄準圓圈 ⊕)
     function drawTrialShotPoint(pos, label, color) {
       const r = 5.5;
       ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
@@ -1523,7 +1528,6 @@
       ctx.fillText(label, pos.x + r + 4, pos.y - r - 2);
     }
 
-    // 繪製 #1/#3砲翼次射點 (菱形 ◆)
     function drawWingShotPoint(pos, label, color) {
       const sz = 5.5;
       ctx.beginPath();
@@ -1539,7 +1543,6 @@
       ctx.fillText(label, pos.x + sz + 3, pos.y - sz - 2);
     }
 
-    // 繪製效力射中心點 (五角爆破星型 ★)
     function drawStar(cx, cy, spikes, outerRadius, innerRadius, color) {
       let rot = Math.PI / 2 * 3;
       let x = cx, y = cy;
@@ -1564,7 +1567,6 @@
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
     }
 
-    // 繪製扇形圖 (Fan Diagram)
     function drawFanDiagramOnCanvas() {
       const lAz = parseFloat(document.getElementById('fanLeftAz').value) || 600;
       const rAz = parseFloat(document.getElementById('fanRightAz').value) || 1400;
@@ -1584,7 +1586,6 @@
       const rMinPx = (minR / maxRange) * scaledBoardRadius;
       const rMaxPx = (maxR / maxRange) * scaledBoardRadius;
 
-      // 角度轉換 (標準極座標 0 度為 East, 順時針轉)
       const radL = milToRad(lAz) - milToRad(boardRotationMil) - Math.PI / 2;
       const radR = milToRad(rAz) - milToRad(boardRotationMil) - Math.PI / 2;
 
@@ -1600,7 +1601,6 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // 繪製中央軸線
       const midAz = (lAz + totalAngle / 2) % 6400;
       const radMid = milToRad(midAz) - milToRad(boardRotationMil) - Math.PI / 2;
       ctx.beginPath();
@@ -1717,22 +1717,18 @@
         tbody.appendChild(tr); relTbody.appendChild(relTr);
       });
 
-      // M10 圖板分層開關
       const showBoardTarget = document.getElementById('boardLayerTarget').checked;
       const showBoardTrial = document.getElementById('boardLayerTrial').checked;
       const showBoardWing = document.getElementById('boardLayerWing').checked;
       const showBoardEffect = document.getElementById('boardLayerEffect').checked;
       const showBoardFan = document.getElementById('boardLayerFan').checked;
 
-      // 扇形圖繪製
       if (showBoardFan) drawFanDiagramOnCanvas();
 
-      // 目標點繪製
       if (showBoardTarget) {
         globalTargets.forEach((t, idx) => drawTargetPoint(xyToCanvas(t.x, t.y), t.id, getDistinctColor(idx)));
       }
 
-      // 砲陣地位置
       globalGuns.forEach(g => {
         const pos = xyToCanvas(g.x, g.y);
         ctx.beginPath(); ctx.arc(pos.x, pos.y, 3.5, 0, 2 * Math.PI);
@@ -1742,7 +1738,6 @@
         ctx.fillText(g.id, pos.x + 6, pos.y - 5);
       });
 
-      // #2砲試射點 (⊕)
       if (showBoardTrial) {
         correctionShots.forEach(shot => {
           const pos = xyToCanvas(shot.x, shot.y);
@@ -1753,7 +1748,6 @@
         });
       }
 
-      // #1/#3砲翼次射點 (◆)
       if (showBoardWing) {
         wingShotRounds.forEach(round => {
           round.shots.forEach(shot => {
@@ -1766,7 +1760,6 @@
         });
       }
 
-      // 效力射涵蓋區 (★)
       if (showBoardEffect) {
         effectFireHistory.forEach(item => {
           if (!item.area) return;
@@ -2201,7 +2194,7 @@
       });
     }
 
-    /* PDF 全面重構優化導出引擎 */
+    /* PDF 完全符合規範導出引擎 */
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
       const band = document.getElementById('mgrsBand').value || 'R';
@@ -2237,7 +2230,7 @@
         targetsListHtml += `<li><b>目標 ${t.id}</b>: 51${band} ${sq} ${tE4} ${tN4} (標高: ${t.alt}m)</li>`;
       });
 
-      // 3. 試射記錄表 (替換為：修正後砲目方向角與修正後砲目距離)
+      // 3. 試射記錄表 (已刪除 ∠OT/D_OT，新增修正後砲目方向角與距離)
       let trialLogHtml = '';
       if (correctionShots.length === 0) {
         trialLogHtml = '<div style="font-size:12px; color:#666;">無試射修正紀錄</div>';
@@ -2312,23 +2305,23 @@
           </table>`;
       }
 
-      // 5. 扇形圖諸元與資訊
+      // 5. 扇形圖諸元
       const fanLAz = document.getElementById('fanLeftAz').value;
       const fanRAz = document.getElementById('fanRightAz').value;
       const fanMinR = document.getElementById('fanMinRange').value;
       const fanMaxR = document.getElementById('fanMaxRange').value;
 
-      // 6. 計算過程展示區 (M10圖板交叉驗證程序)
+      // 6. 計算過程展示區 (M10圖板交叉驗證程序，置於最末區塊)
       let calcStepsHtml = '';
       if (correctionShots.length > 0) {
-        calcStepsHtml += `<h4>【#2砲 試射觀修向量推算】</h4>`;
+        calcStepsHtml += `<h4>【#2砲 試射觀修向量推算步驟】</h4>`;
         correctionShots.forEach(s => {
           calcStepsHtml += `<div style="font-size:11px; margin-bottom:6px; background:#f8f9fa; padding:6px; border-left:3px solid #00a8ff;">
             <b>發次 #${s.shotNum} [目標 ${s.targetId}]</b>：<br>
             • 觀修輸入：口令 = ${s.cmdStr} (左右位移 W = ${s.shiftW}m, 距離位移 R = ${s.shiftR}m)<br>
-            • 觀目軸線 ∠OT = ${s.azOT} mil，轉角度 Rad = (${s.azOT} / 6400) × 2π<br>
-            • 向量分解 ΔX = R·sin(Rad) + W·cos(Rad) = ${s.shiftR}·sin(${s.azOT}) + ${s.shiftW}·cos(${s.azOT})<br>
-            • 向量分解 ΔY = R·cos(Rad) - W·sin(Rad) = ${s.shiftR}·cos(${s.azOT}) - ${s.shiftW}·sin(${s.azOT})<br>
+            • 觀目軸線 ∠OT = ${s.azOT} mil，極座標角度 Rad = (${s.azOT} / 6400) × 2π<br>
+            • 向量分解 ΔX (East) = R·sin(Rad) + W·cos(Rad) = ${s.shiftR}·sin(${s.azOT}) + ${s.shiftW}·cos(${s.azOT})<br>
+            • 向量分解 ΔY (North) = R·cos(Rad) - W·sin(Rad) = ${s.shiftR}·cos(${s.azOT}) - ${s.shiftW}·sin(${s.azOT})<br>
             • 彈著點新座標 (對應OP)：X = ${Math.round(s.x)}m, Y = ${Math.round(s.y)}m
           </div>`;
         });
@@ -2366,7 +2359,7 @@
         <!DOCTYPE html>
         <html>
         <head>
-          <title>破浪戰術射擊指揮紀錄報告 (M10重構優化版)</title>
+          <title>破浪戰術射擊指揮紀錄報告 (M10)</title>
           <style>
             body { font-family: sans-serif; padding: 15px; color: #000; background: #fff; }
             h2 { margin-bottom: 5px; }
@@ -2416,7 +2409,7 @@
           <h3>【效力射歷史履歷與口令表】</h3>
           ${historyHtml || '<div style="font-size:11px;">尚無效力射歷史紀錄</div>'}
 
-          <h3 style="page-break-before:always; margin-top:20px;">【射擊扇形圖諸元 (Fan Diagram)】</h3>
+          <h3 style="page-break-before:always; margin-top:20px;">【射擊扇形圖諸元 (Range & Sector Fan)】</h3>
           <div style="font-size:11px; margin-bottom:8px; line-height:1.5;">
             • 左射界方位角：<b>${fanLAz} mil</b> | 右射界方位角：<b>${fanRAz} mil</b><br>
             • 最小射程 R_min：<b>${fanMinR} m</b> | 最大射程 R_max：<b>${fanMaxR} m</b>
