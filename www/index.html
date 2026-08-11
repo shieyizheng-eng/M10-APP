@@ -210,26 +210,30 @@
       overflow-y: auto;
     }
 
+    /* 修正子分頁列：解決 1, 4, 5 按鈕被切掉與出現藍色滾動條的問題 */
     .tab-header {
       display: flex;
       background-color: #28313e;
       border-radius: 6px;
       padding: 3px;
       gap: 2px;
-      overflow-x: auto;
+      width: 100%;
+      overflow: hidden; /* 移除滾動條 */
     }
     .tab-btn {
-      flex: 1;
-      min-width: 65px;
-      padding: 8px 2px;
+      flex: 1 1 0; /* 均勻平分寬度 */
+      min-width: 0; /* 允許自動收縮 */
+      padding: 7px 1px;
       border: none;
       background-color: transparent;
       color: #8395a7;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: bold;
       border-radius: 4px;
       text-align: center;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .tab-btn.active {
       background-color: #00a8ff;
@@ -428,6 +432,27 @@
       margin-top: 6px;
       font-size: 0.75rem;
     }
+
+    /* 教範標準扇形圖專用 Canvas 樣式 */
+    .fan-canvas-container {
+      width: 100%;
+      background-color: #fdfbf2;
+      border: 1px solid #c8d6e5;
+      border-radius: 6px;
+      padding: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 8px;
+    }
+    #fanCanvas {
+      background-color: #fdfbf2;
+      border: 1px solid #222;
+      width: 100%;
+      height: auto;
+      border-radius: 0;
+      box-shadow: none;
+    }
   </style>
 </head>
 <body>
@@ -442,13 +467,13 @@
   <div class="app-container">
     
     <div class="sidebar" id="sidebarContainer">
-      <!-- 修正後的分頁順序：1.諸元圖解 -> 2.扇形圖 -> 3.落彈修正 -> 4.翼次射 -> 5.效力射 -->
+      <!-- 修正後的分頁標頭：確保 5 個按鈕完美平鋪不被滾動條遮擋 -->
       <div class="tab-header">
-        <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1. 諸元圖解</button>
-        <button class="tab-btn" id="tabFanBtn" onclick="switchTab('tabFan')">2. 扇形圖</button>
-        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">3. 落彈修正</button>
-        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">4. 翼次射</button>
-        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">5. 效力射</button>
+        <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1.諸元圖解</button>
+        <button class="tab-btn" id="tabFanBtn" onclick="switchTab('tabFan')">2.扇形圖</button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">3.落彈修正</button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">4.翼次射</button>
+        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">5.效力射</button>
       </div>
 
       <div class="dial-control-group">
@@ -590,34 +615,31 @@
         </div>
       </div>
 
-      <!-- 2. 扇形圖 (Fan Diagram) 設定 -->
+      <!-- 2. 教範標準「目標扇形圖」專屬頁面 (完全依據 05036 圖 5-29、圖 5-30 繪製) -->
       <div id="tabFanContent" style="display: none;">
         <div class="input-group">
-          <div class="section-title">扇形圖射界與射程設定 (Range & Sector Fan)</div>
+          <div class="section-title">教範目標扇形圖參數設定 (05036 規範)</div>
           <div class="input-row">
             <label>左射界密位 (Left Sector):</label>
-            <input type="number" id="fanLeftAz" value="0600" step="10" inputmode="numeric" onchange="calculateAndDraw()">
+            <input type="number" id="fanLeftAz" value="0600" step="10" inputmode="numeric" onchange="drawFanDiagramPage()">
           </div>
           <div class="input-row">
             <label>右射界密位 (Right Sector):</label>
-            <input type="number" id="fanRightAz" value="1400" step="10" inputmode="numeric" onchange="calculateAndDraw()">
+            <input type="number" id="fanRightAz" value="1800" step="10" inputmode="numeric" onchange="drawFanDiagramPage()">
           </div>
           <div class="input-row">
-            <label>最小射程 R_min (死角區):</label>
-            <input type="number" id="fanMinRange" value="800" step="50" inputmode="numeric" onchange="calculateAndDraw()">
+            <label>最小涵蓋距離 R_min (m):</label>
+            <input type="number" id="fanMinRange" value="500" step="50" inputmode="numeric" onchange="drawFanDiagramPage()">
           </div>
           <div class="input-row">
-            <label>最大射程 R_max (極限):</label>
-            <input type="number" id="fanMaxRange" value="2800" step="50" inputmode="numeric" onchange="calculateAndDraw()">
+            <label>最大涵蓋距離 R_max (m):</label>
+            <input type="number" id="fanMaxRange" value="3000" step="50" inputmode="numeric" onchange="drawFanDiagramPage()">
           </div>
         </div>
 
-        <div class="result-box" style="border-color:#54a0ff;">
-          <div class="result-title" style="color:#54a0ff;">扇形圖戰術諸元摘要</div>
-          <div id="fanSummaryDisplay" style="font-size:0.75rem; line-height:1.5; color:#e0e6ed;">
-            - 射擊扇形總夾角：800 mil (45.0°)<br>
-            - 縱深射程涵蓋：2000 公尺 (800m - 2800m)
-          </div>
+        <div class="section-title">目標扇形圖紙預覽 (圖 5-30 樣式)</div>
+        <div class="fan-canvas-container">
+          <canvas id="fanCanvas" width="600" height="520"></canvas>
         </div>
       </div>
 
@@ -894,13 +916,12 @@
       </div>
       <div class="board-hint" id="viewHint">💡 雙指滑動可旋轉與縮放 (最高2000%)｜單指拖曳平移</div>
       
-      <!-- M10 圖板底部圖層切換列 -->
+      <!-- M10 圖板底部圖層切換列 (已取消扇形圖疊加) -->
       <div class="board-layer-bar">
         <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
         <label><input type="checkbox" id="boardLayerTrial" checked onchange="calculateAndDraw()"> ⊕ #2砲試射彈著點</label>
         <label><input type="checkbox" id="boardLayerWing" checked onchange="calculateAndDraw()"> ◆ #1/#3砲翼次彈著</label>
         <label><input type="checkbox" id="boardLayerEffect" checked onchange="calculateAndDraw()"> 🔲 效力射涵蓋區</label>
-        <label><input type="checkbox" id="boardLayerFan" checked onchange="calculateAndDraw()"> 📐 扇形圖</label>
       </div>
     </div>
 
@@ -1241,6 +1262,7 @@
 
       populateTargetSelects();
       if (tab === 'tab2') updateOTDataDisplay();
+      if (tab === 'tabFan') drawFanDiagramPage();
       calculateAndDraw();
     }
 
@@ -1567,51 +1589,165 @@
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
     }
 
-    function drawFanDiagramOnCanvas() {
+    /* 完全依據 05036 教範 圖 5-29 & 圖 5-30 繪製專屬目標扇形圖 */
+    function drawFanDiagramPage() {
+      const fanCv = document.getElementById('fanCanvas');
+      if (!fanCv) return;
+      const fCtx = fanCv.getContext('2d');
+      const w = fanCv.width, h = fanCv.height;
+
+      fCtx.clearRect(0, 0, w, h);
+      fCtx.fillStyle = '#fdfbf2';
+      fCtx.fillRect(0, 0, w, h);
+
+      // 外外框線
+      fCtx.strokeStyle = '#222222';
+      fCtx.lineWidth = 1.5;
+      fCtx.strokeRect(10, 10, w - 20, h - 20);
+
+      // OP 觀測員基準點 (中央下方紅色三角形)
+      const opX = w / 2;
+      const opY = h - 35;
+
       const lAz = parseFloat(document.getElementById('fanLeftAz').value) || 600;
-      const rAz = parseFloat(document.getElementById('fanRightAz').value) || 1400;
-      const minR = parseFloat(document.getElementById('fanMinRange').value) || 800;
-      const maxR = parseFloat(document.getElementById('fanMaxRange').value) || 2800;
+      const rAz = parseFloat(document.getElementById('fanRightAz').value) || 1800;
+      const minR = parseFloat(document.getElementById('fanMinRange').value) || 500;
+      const maxR = parseFloat(document.getElementById('fanMaxRange').value) || 3000;
 
-      const totalAngle = (rAz - lAz + 6400) % 6400;
-      document.getElementById('fanSummaryDisplay').innerHTML = `
-        - 射擊扇形總夾角：<strong>${totalAngle} mil</strong> (${(totalAngle * 360 / 6400).toFixed(1)}°)<br>
-        - 縱深射程涵蓋：<strong>${maxR - minR} 公尺</strong> (${minR}m - ${maxR}m)
-      `;
+      const radiusPx = h - 100;
 
-      const m2Gun = globalGuns.find(g => g.id === '#2') || { x: 0, y: 0 };
-      const centerPos = xyToCanvas(m2Gun.x, m2Gun.y);
-      const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
+      // 繪製正北方向標示 (W / 正北箭頭)
+      fCtx.save();
+      fCtx.translate(35, 45);
+      fCtx.beginPath();
+      fCtx.moveTo(0, 15); fCtx.lineTo(0, -20);
+      fCtx.strokeStyle = '#d63031'; fCtx.lineWidth = 2; fCtx.stroke();
+      fCtx.beginPath();
+      fCtx.moveTo(-5, -12); fCtx.lineTo(0, -20); fCtx.lineTo(5, -12);
+      fCtx.fillStyle = '#d63031'; fCtx.fill();
+      fCtx.font = 'bold 12px sans-serif'; fCtx.fillStyle = '#d63031';
+      fCtx.fillText('W', -5, -24);
+      fCtx.restore();
 
-      const rMinPx = (minR / maxRange) * scaledBoardRadius;
-      const rMaxPx = (maxR / maxRange) * scaledBoardRadius;
+      // 1. 繪製半圓/扇形輻射網格線 (教範圖 5-29 樣式)
+      fCtx.lineWidth = 0.8;
+      
+      // 方位角線 (每 100 密位)
+      const totalSweep = (rAz - lAz + 6400) % 6400;
+      const stepMil = 100;
+      for (let az = lAz; az <= rAz; az += stepMil) {
+        const relAngle = (az - lAz) / totalSweep;
+        // 從左到右展開弧度 (180度半圓區間)
+        const rad = Math.PI + (relAngle * Math.PI);
+        const xEnd = opX + radiusPx * Math.cos(rad);
+        const yEnd = opY + radiusPx * Math.sin(rad);
 
-      const radL = milToRad(lAz) - milToRad(boardRotationMil) - Math.PI / 2;
-      const radR = milToRad(rAz) - milToRad(boardRotationMil) - Math.PI / 2;
+        fCtx.beginPath();
+        fCtx.moveTo(opX, opY);
+        fCtx.lineTo(xEnd, yEnd);
+        fCtx.strokeStyle = (az % 200 === 0) ? '#27ae60' : 'rgba(39, 174, 96, 0.4)';
+        fCtx.stroke();
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(centerPos.x, centerPos.y, rMaxPx, radL, radR, false);
-      ctx.arc(centerPos.x, centerPos.y, rMinPx, radR, radL, true);
-      ctx.closePath();
+        // 方位角數字標註
+        if (az % 100 === 0) {
+          const xTxt = opX + (radiusPx + 14) * Math.cos(rad);
+          const yTxt = opY + (radiusPx + 14) * Math.sin(rad);
+          fCtx.font = '10px sans-serif';
+          fCtx.fillStyle = '#27ae60';
+          fCtx.textAlign = 'center'; fCtx.textBaseline = 'middle';
+          fCtx.fillText(az.toString(), xTxt, yTxt);
+        }
+      }
 
-      ctx.fillStyle = 'rgba(0, 168, 255, 0.15)';
-      ctx.fill();
-      ctx.strokeStyle = '#00a8ff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      // 距離同心圓弧線 (每 500m/1000m)
+      const numDistArcs = 6;
+      for (let i = 1; i <= numDistArcs; i++) {
+        const rRatio = i / numDistArcs;
+        const curRadius = radiusPx * rRatio;
+        const curDistM = Math.round(minR + (maxR - minR) * rRatio);
 
-      const midAz = (lAz + totalAngle / 2) % 6400;
-      const radMid = milToRad(midAz) - milToRad(boardRotationMil) - Math.PI / 2;
-      ctx.beginPath();
-      ctx.moveTo(centerPos.x + rMinPx * Math.cos(radMid), centerPos.y + rMinPx * Math.sin(radMid));
-      ctx.lineTo(centerPos.x + rMaxPx * Math.cos(radMid), centerPos.y + rMaxPx * Math.sin(radMid));
-      ctx.strokeStyle = '#fbc531';
-      ctx.setLineDash([4, 4]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+        fCtx.beginPath();
+        fCtx.arc(opX, opY, curRadius, Math.PI, 2 * Math.PI, false);
+        fCtx.strokeStyle = (i % 2 === 0) ? '#e74c3c' : 'rgba(231, 76, 60, 0.4)';
+        fCtx.stroke();
 
-      ctx.restore();
+        // 距離標註
+        fCtx.font = '10px sans-serif';
+        fCtx.fillStyle = '#e74c3c';
+        fCtx.textAlign = 'left';
+        fCtx.fillText(`${curDistM}`, opX + curRadius - 15, opY + 12);
+        fCtx.textAlign = 'right';
+        fCtx.fillText(`${curDistM}`, opX - curRadius + 15, opY + 12);
+      }
+
+      // 2. 標繪當前目標點與觀目箭頭線 (教範圖 5-30 樣式)
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+      const opAlt = parseFloat(document.getElementById('opAlt').value) || 100;
+
+      globalTargets.forEach((t, idx) => {
+        const dx = t.x, dy = t.y;
+        const distOT = Math.hypot(dx, dy);
+        let azOT = radToMil(Math.atan2(dx, dy));
+
+        if (azOT >= lAz && azOT <= rAz && distOT >= minR && distOT <= maxR) {
+          const relAngle = (azOT - lAz) / totalSweep;
+          const rad = Math.PI + (relAngle * Math.PI);
+          const distRatio = (distOT - minR) / (maxR - minR);
+          const tPxRadius = radiusPx * distRatio;
+
+          const tX = opX + tPxRadius * Math.cos(rad);
+          const tY = opY + tPxRadius * Math.sin(rad);
+
+          // 觀目箭頭射線
+          fCtx.beginPath();
+          fCtx.moveTo(opX, opY);
+          fCtx.lineTo(tX, tY);
+          fCtx.strokeStyle = '#2c3e50';
+          fCtx.lineWidth = 1.2;
+          fCtx.stroke();
+
+          // 箭頭
+          const arrowLen = 8;
+          fCtx.beginPath();
+          fCtx.moveTo(tX, tY);
+          fCtx.lineTo(tX - arrowLen * Math.cos(rad - 0.3), tY - arrowLen * Math.sin(rad - 0.3));
+          fCtx.lineTo(tX - arrowLen * Math.cos(rad + 0.3), tY - arrowLen * Math.sin(rad + 0.3));
+          fCtx.closePath();
+          fCtx.fillStyle = '#2c3e50';
+          fCtx.fill();
+
+          // 目標圖示
+          fCtx.beginPath();
+          fCtx.arc(tX, tY - 12, 5, 0, 2 * Math.PI);
+          fCtx.fillStyle = getDistinctColor(idx);
+          fCtx.fill();
+          fCtx.strokeStyle = '#222'; fCtx.lineWidth = 1; fCtx.stroke();
+
+          // 標註觀目諸元標籤 (Δh / OT)
+          const deltaH = t.alt - opAlt;
+          const signStr = deltaH >= 0 ? `+${deltaH}` : `${deltaH}`;
+          
+          fCtx.font = 'bold 10px sans-serif';
+          fCtx.fillStyle = '#111111';
+          fCtx.textAlign = 'center';
+          fCtx.fillText(`∠${Math.round(azOT)}`, tX, tY - 32);
+          fCtx.fillText(`Δ${signStr}`, tX, tY - 22);
+          fCtx.fillText(`OT${Math.round(distOT)}`, tX, tY - 12);
+        }
+      });
+
+      // 繪製觀測員 OP 紅色三角形基點
+      fCtx.beginPath();
+      fCtx.moveTo(opX, opY - 8);
+      fCtx.lineTo(opX + 8, opY + 6);
+      fCtx.lineTo(opX - 8, opY + 6);
+      fCtx.closePath();
+      fCtx.fillStyle = '#e74c3c';
+      fCtx.fill();
+      fCtx.strokeStyle = '#ffffff';
+      fCtx.lineWidth = 1.5;
+      fCtx.stroke();
     }
 
     function calculateAndDraw() {
@@ -1677,9 +1813,6 @@
       globalTargets.forEach(t => maxDist = Math.max(maxDist, Math.hypot(t.x, t.y)));
       correctionShots.forEach(s => maxDist = Math.max(maxDist, Math.hypot(s.x, s.y)));
 
-      const fanMaxR = parseFloat(document.getElementById('fanMaxRange').value) || 2800;
-      maxDist = Math.max(maxDist, fanMaxR);
-
       maxDist = Math.max(maxDist, 1000);
       maxRange = Math.max(2000, Math.min(10000, Math.ceil((maxDist * 1.35) / 500) * 500));
 
@@ -1721,9 +1854,6 @@
       const showBoardTrial = document.getElementById('boardLayerTrial').checked;
       const showBoardWing = document.getElementById('boardLayerWing').checked;
       const showBoardEffect = document.getElementById('boardLayerEffect').checked;
-      const showBoardFan = document.getElementById('boardLayerFan').checked;
-
-      if (showBoardFan) drawFanDiagramOnCanvas();
 
       if (showBoardTarget) {
         globalTargets.forEach((t, idx) => drawTargetPoint(xyToCanvas(t.x, t.y), t.id, getDistinctColor(idx)));
@@ -1783,6 +1913,7 @@
       }
 
       if (currentTab === 'tab2') renderCorrectionResultTable();
+      if (currentTab === 'tabFan') drawFanDiagramPage();
       if (currentMainView === 'map') updateMapMarkers();
     }
 
@@ -2194,9 +2325,12 @@
       });
     }
 
-    /* PDF 完全符合規範導出引擎 */
+    /* PDF 導出引擎：完全去除非必要表格與註記，並精準呈現教範扇形圖 */
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
+      drawFanDiagramPage();
+      const fanCanvasImg = document.getElementById('fanCanvas').toDataURL('image/png');
+
       const band = document.getElementById('mgrsBand').value || 'R';
       const sq = document.getElementById('mgrsSq').value || 'TK';
       const opE = document.getElementById('opE8').value || '4999';
@@ -2230,7 +2364,7 @@
         targetsListHtml += `<li><b>目標 ${t.id}</b>: 51${band} ${sq} ${tE4} ${tN4} (標高: ${t.alt}m)</li>`;
       });
 
-      // 3. 試射記錄表 (已刪除 ∠OT/D_OT，新增修正後砲目方向角與距離)
+      // 3. 試射記錄表
       let trialLogHtml = '';
       if (correctionShots.length === 0) {
         trialLogHtml = '<div style="font-size:12px; color:#666;">無試射修正紀錄</div>';
@@ -2305,13 +2439,7 @@
           </table>`;
       }
 
-      // 5. 扇形圖諸元
-      const fanLAz = document.getElementById('fanLeftAz').value;
-      const fanRAz = document.getElementById('fanRightAz').value;
-      const fanMinR = document.getElementById('fanMinRange').value;
-      const fanMaxR = document.getElementById('fanMaxRange').value;
-
-      // 6. 計算過程展示區 (M10圖板交叉驗證程序，置於最末區塊)
+      // 5. 計算過程展示區 (M10圖板交叉驗證程序，置於 PDF 最末區塊)
       let calcStepsHtml = '';
       if (correctionShots.length > 0) {
         calcStepsHtml += `<h4>【#2砲 試射觀修向量推算步驟】</h4>`;
@@ -2367,7 +2495,7 @@
             h4 { margin-top: 8px; margin-bottom: 4px; font-size: 12px; }
             .meta-info { font-size: 11px; margin-bottom: 8px; }
             .img-container { text-align: center; margin: 10px 0; }
-            .img-container img { max-width: 65%; border: 1px solid #000; border-radius: 50%; }
+            .img-container img { max-width: 65%; border: 1px solid #000; }
             ul { font-size: 11px; line-height: 1.4; padding-left: 20px; }
             @media print {
               body { padding: 0; }
@@ -2394,7 +2522,7 @@
           </div>
 
           <div class="img-container">
-            <img src="${canvasImg}" />
+            <img src="${canvasImg}" style="border-radius:50%;" />
           </div>
 
           <h3>【目標點座標清單 (MGRS 格式)】</h3>
@@ -2409,10 +2537,9 @@
           <h3>【效力射歷史履歷與口令表】</h3>
           ${historyHtml || '<div style="font-size:11px;">尚無效力射歷史紀錄</div>'}
 
-          <h3 style="page-break-before:always; margin-top:20px;">【射擊扇形圖諸元 (Range & Sector Fan)】</h3>
-          <div style="font-size:11px; margin-bottom:8px; line-height:1.5;">
-            • 左射界方位角：<b>${fanLAz} mil</b> | 右射界方位角：<b>${fanRAz} mil</b><br>
-            • 最小射程 R_min：<b>${fanMinR} m</b> | 最大射程 R_max：<b>${fanMaxR} m</b>
+          <h3 style="page-break-before:always; margin-top:20px;">【教範目標扇形圖 (05036 規範)】</h3>
+          <div class="img-container">
+            <img src="${fanCanvasImg}" style="max-width:85%;" />
           </div>
 
           <h3>【計算過程展示區 (M10圖板交叉驗證程序)】</h3>
