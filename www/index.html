@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>M10 射擊圖板與指揮系統</title>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      touch-action: manipulation;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background-color: #121619;
+      color: #e0e6ed;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    .top-app-bar {
+      display: flex;
+      background-color: #1c262f;
+      border-bottom: 2px solid #00a8ff;
+      z-index: 1000;
+      flex-shrink: 0;
+      align-items: center;
+      overflow-x: auto;
+    }
+    .top-tab-btn {
+      flex: 1;
+      min-width: 75px;
+      padding: 12px 6px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      background: transparent;
+      color: #8395a7;
+      border: none;
+      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .top-tab-btn.active {
+      background: #00a8ff;
+      color: #ffffff;
+    }
+    .pdf-export-btn {
+      background-color: #e1b12c;
+      color: #121619;
+      font-weight: bold;
+      font-size: 0.82rem;
+      border: none;
+      padding: 8px 12px;
+      margin-right: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .pdf-export-btn:active { opacity: 0.85; }
+
+    .app-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (min-width: 850px) {
+      .app-container { flex-direction: row; }
+      .sidebar {
+        width: 460px !important;
+        min-width: 460px !important;
+        height: 100% !important;
+        border-right: 1px solid #2d3d36;
+        display: flex !important;
+        order: 1;
+      }
+      .main-content {
+        order: 2;
+        flex: 1;
+        height: 100%;
+        display: flex !important;
+      }
+    }
+
+    @media (max-width: 849px) {
+      .sidebar {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .main-content {
+        width: 100% !important;
+        height: 100% !important;
+      }
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      background-color: #0a0d0f;
+      overflow: hidden;
+    }
+    
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      touch-action: none;
+    }
+    canvas {
+      background-color: #172026;
+      box-shadow: 0 0 25px rgba(0,0,0,0.9);
+      border-radius: 50%;
+      max-width: 92vw;
+      max-height: 92vw;
+    }
+
+    .board-layer-bar {
+      width: 100%;
+      background-color: rgba(28, 38, 47, 0.95);
+      border-top: 1px solid #00a8ff;
+      padding: 6px 8px;
+      display: flex;
+      justify-content: space-around;
+      gap: 6px;
+      z-index: 500;
+      flex-shrink: 0;
+    }
+    .board-layer-bar label {
+      font-size: 0.75rem;
+      color: #e0e6ed;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    #mapViewContainer {
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      position: relative;
+      background-color: #121619;
+    }
+    #mapView {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      min-height: 300px;
+      z-index: 1;
+    }
+
+    .map-layer-bar {
+      background-color: rgba(28, 38, 47, 0.95);
+      border-top: 1px solid #00a8ff;
+      padding: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      gap: 6px;
+      z-index: 500;
+    }
+    .map-layer-bar label {
+      font-size: 0.75rem;
+      color: #e0e6ed;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+
+    .board-hint {
+      position: absolute;
+      bottom: 40px;
+      color: #8395a7;
+      font-size: 0.72rem;
+      background-color: rgba(0,0,0,0.75);
+      padding: 4px 10px;
+      border-radius: 12px;
+      pointer-events: none;
+      text-align: center;
+      z-index: 15;
+    }
+
+    .sidebar {
+      background-color: #1e242b;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.6);
+      z-index: 10;
+      overflow-y: auto;
+    }
+
+    .tab-header {
+      display: flex;
+      background-color: #28313e;
+      border-radius: 6px;
+      padding: 3px;
+      gap: 4px;
+      width: 100%;
+      flex-shrink: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .tab-btn {
+      flex: 1;
+      min-width: 75px;
+      padding: 8px 4px;
+      border: none;
+      background-color: transparent;
+      color: #8395a7;
+      font-size: 0.78rem;
+      font-weight: bold;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background-color: #00a8ff;
+      color: #fff;
+    }
+
+    .mode-switch {
+      display: flex;
+      background-color: #121619;
+      border-radius: 6px;
+      padding: 2px;
+      border: 1px solid #3c4858;
+      gap: 2px;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 6px 2px;
+      border: none;
+      background-color: transparent;
+      color: #8395a7;
+      font-size: 0.78rem;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .mode-btn.active {
+      background-color: #e1b12c;
+      color: #121619;
+    }
+
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: bold;
+      color: #00a8ff;
+      margin-bottom: 6px;
+      border-left: 3px solid #00a8ff;
+      padding-left: 6px;
+    }
+    .input-group {
+      background-color: #28313e;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #3c4858;
+      margin-bottom: 8px;
+    }
+    .input-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .input-row:last-child { margin-bottom: 0; }
+    label { font-size: 0.78rem; }
+    input[type="number"], input[type="text"], select {
+      width: 85px;
+      padding: 5px 6px;
+      border-radius: 4px;
+      border: 1px solid #485460;
+      background-color: #1e242b;
+      color: #fff;
+      text-align: right;
+      font-size: 0.85rem;
+    }
+    select { text-align: left; }
+    .grid-input-row {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .grid-input-row input {
+      width: 55px;
+      text-align: center;
+    }
+
+    .dial-control-group {
+      background-color: #1a222a;
+      border: 1px solid #00a8ff;
+      padding: 8px 10px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .slider-row input[type="range"] {
+      flex: 1;
+      height: 28px;
+    }
+    .btn-mini {
+      padding: 4px 7px;
+      font-size: 0.75rem;
+      background-color: #3c4858;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    .toggle-switch input { display: none; }
+    .slider-toggle {
+      width: 38px; height: 20px;
+      background-color: #3c4858;
+      border-radius: 20px;
+      position: relative;
+      transition: .3s;
+    }
+    .slider-toggle:before {
+      content: "";
+      position: absolute;
+      width: 14px; height: 14px;
+      left: 3px; bottom: 3px;
+      background-color: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    input:checked + .slider-toggle { background-color: #4cd137; }
+    input:checked + .slider-toggle:before { transform: translateX(18px); }
+
+    button.action-btn {
+      padding: 10px;
+      background-color: #4cd137;
+      color: #1e242b;
+      font-weight: bold;
+      font-size: 0.88rem;
+      border: none;
+      border-radius: 6px;
+      width: 100%;
+      cursor: pointer;
+    }
+    button.action-btn:active { opacity: 0.85; }
+    button.danger-btn { background-color: #ff4757; color: #fff; }
+    button.add-btn { background-color: #00a8ff; color: #fff; margin-top: 4px; }
+
+    .result-box {
+      background-color: #28313e;
+      border: 1px solid #e1b12c;
+      border-radius: 6px;
+      padding: 8px;
+      margin-bottom: 8px;
+      overflow-x: auto;
+    }
+    .result-title {
+      color: #e1b12c;
+      font-weight: bold;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    table.result-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.72rem;
+      text-align: center;
+    }
+    table.result-table th, table.result-table td {
+      border: 1px solid #3c4858;
+      padding: 5px 2px;
+    }
+    table.result-table th { background-color: #1e242b; color: #00a8ff; }
+    table.result-table td.val-az { color: #4cd137; font-weight: bold; }
+    table.result-table td.val-rel { color: #fbc531; font-weight: bold; }
+    table.result-table td.val-dist { color: #00d2d3; font-weight: bold; }
+    table.result-table td.val-alt { color: #e1b12c; }
+
+    .command-output-box {
+      background-color: #151a1e;
+      border: 1px solid #4cd137;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #4cd137;
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
+    .warning-box {
+      background-color: rgba(255, 71, 87, 0.2);
+      border: 1px solid #ff4757;
+      color: #ff4757;
+      padding: 6px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      margin-bottom: 6px;
+    }
+    .history-card {
+      background-color: #151a1e;
+      border: 1px solid #3c4858;
+      border-radius: 6px;
+      padding: 8px;
+      margin-top: 6px;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-app-bar">
+    <button class="top-tab-btn active" id="btnMainSidebarTab" onclick="switchMainTab('sidebar')">數據計算</button>
+    <button class="top-tab-btn" id="btnMainCanvasTab" onclick="switchMainTab('canvas')">M10 射擊圖板</button>
+    <button class="top-tab-btn" id="btnMainMapTab" onclick="switchMainTab('map')">真實圖例</button>
+    <button class="pdf-export-btn" onclick="generatePoLangPDF()">📄 破浪PDF</button>
+  </div>
+
+  <div class="app-container">
+    
+    <div class="sidebar" id="sidebarContainer">
+      <div class="tab-header">
+        <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1.諸元圖解</button>
+        <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">2.落彈修正</button>
+        <button class="tab-btn" id="tab3Btn" onclick="switchTab('tab3')">3.翼次射</button>
+        <button class="tab-btn" id="tab4Btn" onclick="switchTab('tab4')">4.效力射</button>
+      </div>
+
+      <div class="dial-control-group">
+        <div class="input-row" style="margin-bottom: 6px; border-bottom: 1px dashed #3c4858; padding-bottom: 6px;">
+          <label style="color:#4cd137; font-weight:bold;">💡 螢幕保持恆亮 (Keep Awake)</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="keepAwakeToggle" onchange="toggleKeepAwake(this.checked)">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+
+        <div class="section-title" style="color: #e1b12c; border-color: #e1b12c;">圖板轉盤控制</div>
+        <div class="input-row">
+          <label>旋轉角度: <strong id="rotAngleDisplay" style="color:#00a8ff;">0000 mil</strong></label>
+          <div>
+            <button class="btn-mini" onclick="adjustRotation(-100)">-100</button>
+            <button class="btn-mini" onclick="adjustRotation(-10)">-10</button>
+            <button class="btn-mini" onclick="adjustRotation(10)">+10</button>
+            <button class="btn-mini" onclick="adjustRotation(100)">+100</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="rotSlider" min="0" max="6400" value="0" step="5" oninput="onRotationSliderChange(this.value)">
+          <button class="btn-mini" onclick="resetRotation()">歸零</button>
+        </div>
+
+        <div class="input-row" style="margin-top: 6px;">
+          <label>縮放倍率 (最高 2000%): <strong id="zoomDisplay" style="color:#4cd137;">100%</strong></label>
+          <div>
+            <button class="btn-mini" onclick="adjustZoom(-0.5)">- 縮小</button>
+            <button class="btn-mini" onclick="adjustZoom(0.5)">+ 放大</button>
+          </div>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="zoomSlider" min="0.5" max="20.0" value="1.0" step="0.1" oninput="onZoomSliderChange(this.value)">
+          <button class="btn-mini" onclick="resetViewPort()">重置</button>
+        </div>
+      </div>
+
+      <!-- 1. 諸元圖解頁面 -->
+      <div id="tab1Content">
+        <div class="mode-switch" style="margin: 6px 0;">
+          <button class="mode-btn active" id="btn8Grid" onclick="switchMode('grid8')">MGRS 8碼模式</button>
+          <button class="mode-btn" id="btnPolar" onclick="switchMode('polar')">極座標模式</button>
+        </div>
+
+        <div id="grid8Inputs">
+          <div class="input-group">
+            <div class="section-title">MGRS 網格頭標</div>
+            <div class="input-row">
+              <label>Zone / Band / Square:</label>
+              <div class="grid-input-row">
+                <input type="text" id="mgrsZone" value="51" readonly style="width:35px; text-align:center; background:#121619;">
+                <select id="mgrsBand" style="width:50px; text-align:center;" onchange="calculateAndDraw()">
+                  <option value="R" selected>R</option>
+                  <option value="Q">Q</option>
+                </select>
+                <input type="text" id="mgrsSq" value="TK" maxlength="2" style="width:45px; text-align:center; text-transform:uppercase;" onchange="calculateAndDraw()">
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="section-title">1. 觀測員 (OP) MGRS 8碼與標高</div>
+            <div class="input-row">
+              <label>OP 觀測所:</label>
+              <div class="grid-input-row">
+                <input type="text" id="opE8" value="4999" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+                <span>/</span>
+                <input type="text" id="opN8" value="1962" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+                <span>/</span>
+                <input type="number" id="opAlt" value="100" style="width:45px;" onchange="calculateAndDraw()">
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="section-title">2. 砲陣地 MGRS 8碼與標高</div>
+            <div class="input-row"><label>#1 砲:</label>
+              <div class="grid-input-row"><input type="text" id="m1E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="1929" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m1Alt" value="85" style="width:45px;"></div>
+            </div>
+            <div class="input-row"><label>#2 砲 (基準):</label>
+              <div class="grid-input-row"><input type="text" id="m2E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="1927" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m2Alt" value="85" style="width:45px;"></div>
+            </div>
+            <div class="input-row"><label>#3 砲:</label>
+              <div class="grid-input-row"><input type="text" id="m3E8" value="5006" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="1928" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m3Alt" value="85" style="width:45px;"></div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="section-title">3. 動態目標點清單 (E / N / 標高)</div>
+            <div id="targetInputsContainer"></div>
+            <button class="action-btn add-btn" onclick="addNewTargetRow()">+ 動態新增目標</button>
+          </div>
+        </div>
+
+        <div id="polarInputs" style="display: none;">
+          <div class="input-group">
+            <div class="section-title">1. 當前 OP ➔ 目標 T1</div>
+            <div class="input-row"><label>觀目方位角 (密位):</label><input type="number" id="azT1" value="950" min="0" max="6400" inputmode="numeric"></div>
+            <div class="input-row"><label>觀目距離 (公尺):</label><input type="number" id="distT1" value="1200" min="0" max="10000" inputmode="numeric"></div>
+          </div>
+          <div class="input-group">
+            <div class="section-title">2. 當前 OP ➔ #1 砲陣地</div>
+            <div class="input-row"><label>觀砲方位角 (密位):</label><input type="number" id="azM1" value="4750" min="0" max="6400" inputmode="numeric"></div>
+            <div class="input-row"><label>觀砲距離 (公尺):</label><input type="number" id="distM1" value="600" min="0" max="10000" inputmode="numeric"></div>
+          </div>
+        </div>
+
+        <button class="action-btn" style="margin-bottom: 8px;" onclick="calculateAndDraw()">重新圖解標點</button>
+
+        <div class="result-box" style="border-color: #00d2d3;">
+          <div class="result-title" style="color:#00d2d3;">砲陣地橫向配置距離矩陣</div>
+          <table class="result-table">
+            <thead><tr><th>項目</th><th>#2 對 #1 砲橫向距</th><th>#3 對 #2 砲橫向距</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="color:#ff4757; font-weight:bold;">垂直配置差</td>
+                <td id="dispM2M1" class="val-dist">0.0 m</td>
+                <td id="dispM3M2" class="val-dist">0.0 m</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title">基本諸元矩陣 (方位角 / 水平距離 / ΔH)</div>
+          <table class="result-table">
+            <thead><tr id="resultTableHeader"><th>砲位 \ 目標</th></tr></thead>
+            <tbody id="resultTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title" style="color:#4cd137;">定向註記分劃矩陣 (以 #2砲➔T1 為 0 密位)</div>
+          <table class="result-table">
+            <thead><tr id="relativeTableHeader"><th>砲位 \ 目標</th></tr></thead>
+            <tbody id="relativeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. 落彈修正頁面 -->
+      <div id="tab2Content" style="display: none;">
+        <div class="input-group">
+          <div class="section-title">1. 修正對象與觀目資料</div>
+          <div class="input-row">
+            <label for="corrTargetSelect">修正基準目標:</label>
+            <select id="corrTargetSelect" onchange="updateOTDataDisplay()"></select>
+          </div>
+          <div class="input-row"><label>觀目方位角 ∠OT:</label><input type="number" id="corrAzOT" value="0" readonly style="background:#2c3a47;"></div>
+          <div class="input-row"><label>觀目距離 D_OT (m):</label><input type="number" id="corrDistOT" value="0" readonly style="background:#2c3a47;"></div>
+        </div>
+
+        <div class="input-group">
+          <div class="section-title">2. 觀測員回報修正口令 (#2砲試射)</div>
+          <div class="input-row">
+            <label for="corrDirType">方向修正項目:</label>
+            <select id="corrDirType" onchange="toggleDirInput()">
+              <option value="m">左右偏差 (公尺)</option>
+              <option value="mil">方向偏差 (密位)</option>
+              <option value="line" selected>原方向</option>
+            </select>
+          </div>
+          <div class="input-row" id="dirValRow" style="display: none;">
+            <label for="corrDirVal">方向修正量:</label>
+            <div class="grid-input-row">
+              <select id="corrDirSign" style="width: 60px;">
+                <option value="left">左</option>
+                <option value="right">右</option>
+              </select>
+              <input type="number" id="corrDirVal" value="50" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <div class="input-row">
+            <label for="corrDistSign">距離修正項目:</label>
+            <select id="corrDistSign" onchange="toggleDistInput()">
+              <option value="add">加多 (Add)</option>
+              <option value="sub">減少 (Drop)</option>
+              <option value="good" selected>原距離</option>
+            </select>
+          </div>
+          <div class="input-row" id="distValRow" style="display: none;">
+            <label for="corrDistVal">距離修正量 (m):</label>
+            <input type="number" id="corrDistVal" value="100" step="25" inputmode="numeric">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <button class="action-btn" style="flex: 2;" onclick="addCorrectionShot()">下達落彈修正</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="resetCorrections()">清除彈著</button>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title">最新彈著點對正各砲諸元</div>
+          <table class="result-table">
+            <thead><tr><th>彈著輪次 \ 砲位</th><th>#1 砲</th><th>#2 砲</th><th>#3 砲</th></tr></thead>
+            <tbody id="corrResultTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. 翼次射頁面 -->
+      <div id="tab3Content" style="display: none;">
+        <div class="input-group">
+          <div class="section-title">翼次射作戰設定 (#1、#3 砲)</div>
+          <div class="input-row">
+            <label>基準檢驗目標:</label>
+            <select id="wingTargetSelect"></select>
+          </div>
+        </div>
+
+        <div class="input-group" style="border-color: #54a0ff;">
+          <div class="section-title" style="color: #54a0ff; border-color: #54a0ff;">#1 砲觀測回報</div>
+          <div class="input-row">
+            <label>#1方向修正:</label>
+            <select id="gun1DirType" onchange="toggleWingDir(1)">
+              <option value="m">左右偏差(m)</option>
+              <option value="mil">方向偏差(mil)</option>
+              <option value="line" selected>原方向</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun1DirRow" style="display:none;">
+            <label>#1量/向:</label>
+            <div class="grid-input-row">
+              <select id="gun1DirSign" style="width:60px;"><option value="left">左</option><option value="right">右</option></select>
+              <input type="number" id="gun1DirVal" value="25" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <div class="input-row">
+            <label>#1距離修正:</label>
+            <select id="gun1DistSign" onchange="toggleWingDist(1)">
+              <option value="add">加多</option><option value="sub">減少</option><option value="good" selected>原距離</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun1DistRow" style="display:none;">
+            <label>#1距離量(m):</label>
+            <input type="number" id="gun1DistVal" value="50" step="25" inputmode="numeric">
+          </div>
+        </div>
+
+        <div class="input-group" style="border-color: #4cd137;">
+          <div class="section-title" style="color: #4cd137; border-color: #4cd137;">#3 砲觀測回報</div>
+          <div class="input-row">
+            <label>#3方向修正:</label>
+            <select id="gun3DirType" onchange="toggleWingDir(3)">
+              <option value="m">左右偏差(m)</option>
+              <option value="mil">方向偏差(mil)</option>
+              <option value="line" selected>原方向</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun3DirRow" style="display:none;">
+            <label>#3量/向:</label>
+            <div class="grid-input-row">
+              <select id="gun3DirSign" style="width:60px;"><option value="left">左</option><option value="right">右</option></select>
+              <input type="number" id="gun3DirVal" value="25" step="5" inputmode="numeric">
+            </div>
+          </div>
+          <div class="input-row">
+            <label>#3距離修正:</label>
+            <select id="gun3DistSign" onchange="toggleWingDist(3)">
+              <option value="add">加多</option><option value="sub">減少</option><option value="good" selected>原距離</option>
+            </select>
+          </div>
+          <div class="input-row" id="gun3DistRow" style="display:none;">
+            <label>#3距離量(m):</label>
+            <input type="number" id="gun3DistVal" value="50" step="25" inputmode="numeric">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <button class="action-btn" style="flex: 2;" onclick="addWingShots()">標繪翼次射彈著</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="resetWingShots()">清除翼次彈</button>
+        </div>
+
+        <div class="result-box">
+          <div class="result-title">翼次射觀修歷史記錄</div>
+          <table class="result-table">
+            <thead><tr><th>輪次 \ 砲位</th><th>#1 砲 諸元</th><th>#3 砲 諸元</th></tr></thead>
+            <tbody id="wingResultTableBody">
+              <tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. 效力射頁面 -->
+      <div id="tab4Content" style="display: none;">
+        <div class="input-group">
+          <div class="section-title">1. 定向基底與特別修正量模式</div>
+          <div class="mode-switch">
+            <button class="mode-btn active" id="btnReindex" onclick="setReindexMode(true)">重標原向</button>
+            <button class="mode-btn" id="btnSpecialCorr" onclick="setReindexMode(false)">不重標原向 (帶入特別修正量)</button>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="section-title">2. 新目標標定方式</div>
+          <div class="input-row">
+            <label>標定方法:</label>
+            <select id="targetDesignationMethod" onchange="toggleDesignationMethod()">
+              <option value="known">已知點轉移法</option>
+              <option value="polar">極座標法</option>
+              <option value="grid">地圖方格座標法</option>
+            </select>
+          </div>
+
+          <div id="knownPointSection">
+            <div class="input-row"><label>基準已知點:</label><select id="knownPointSelect"></select></div>
+            <div class="input-row"><label>觀目方位角 ∠OT (密位):</label><input type="number" id="kpAzOT" value="1970" inputmode="numeric"></div>
+            <div class="input-row">
+              <label>左右轉移量 (m):</label>
+              <div class="grid-input-row">
+                <select id="kpDirSign" style="width:60px;"><option value="right">右</option><option value="left">左</option></select>
+                <input type="number" id="kpShiftDir" value="100" inputmode="numeric">
+              </div>
+            </div>
+            <div class="input-row">
+              <label>前後轉移量 (m):</label>
+              <div class="grid-input-row">
+                <select id="kpDistSign" style="width:60px;"><option value="sub">減少</option><option value="add">加多</option></select>
+                <input type="number" id="kpShiftDist" value="150" inputmode="numeric">
+              </div>
+            </div>
+            <div id="kpWarning" class="warning-box" style="display:none;">
+              ⚠️ 警告：轉移量超過 400 密位，已知點轉移誤差較大！建議改用極座標法。
+            </div>
+          </div>
+
+          <div id="polarSection" style="display: none;">
+            <div class="input-row"><label>觀目方位角 ∠OT (密位):</label><input type="number" id="polarNewAz" value="1800" inputmode="numeric"></div>
+            <div class="input-row"><label>觀目距離 D_OT (m):</label><input type="number" id="polarNewDist" value="800" inputmode="numeric"></div>
+            <div class="input-row"><label>目標標高 (m):</label><input type="number" id="polarNewAlt" value="50" inputmode="numeric"></div>
+          </div>
+
+          <div id="gridSection" style="display: none;">
+            <div class="input-row">
+              <label>新目標 8 碼 (E/N):</label>
+              <div class="grid-input-row">
+                <input type="text" id="gridNewE" value="4940" maxlength="4" inputmode="numeric">
+                <span>/</span>
+                <input type="text" id="gridNewN" value="2000" maxlength="4" inputmode="numeric">
+              </div>
+            </div>
+            <div class="input-row"><label>目標標高 (m):</label><input type="number" id="gridNewAlt" value="50" inputmode="numeric"></div>
+          </div>
+
+          <div class="input-row" style="margin-top:6px;">
+            <label>新目標名稱/編號:</label>
+            <input type="text" id="newTargetName" value="T5" style="width:100px; text-align:center;">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="section-title">3. 效力射射擊方式選擇</div>
+          <div class="input-row">
+            <label>射擊方式:</label>
+            <select id="sheafTypeSelect" onchange="toggleSheafParams()">
+              <optgroup label="固定射擊 (點目標)">
+                <option value="single_fix">單砲固定射 (50m x 50m)</option>
+                <option value="platoon_concentrate">全排集火射 (50m x 50m)</option>
+                <option value="parallel_front">平行火制正面射擊 (120m x 50m)</option>
+              </optgroup>
+              <optgroup label="分佈射擊 (面目標)">
+                <option value="section_sheaf">分段射擊 (200-240m x 50m)</option>
+                <option value="traverse_4">4發橫射 (300m x 30m)</option>
+                <option value="traverse_6">6發橫射 (300m x 50m)</option>
+                <option value="search_2">2發縱射 (50m x 100m)</option>
+                <option value="search_6">6發縱射 (100m x 100m)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="input-row" id="windRow">
+            <label>風向設定:</label>
+            <select id="windDirSelect">
+              <option value="right_to_left">風由右至左 (從左放)</option>
+              <option value="left_to_right" selected>風由左至右 / 無下達 (從右放)</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="action-btn" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
+
+        <div class="result-box" style="margin-top:8px;">
+          <div class="result-title">最新效力射產製諸元矩陣</div>
+          <table class="result-table">
+            <thead>
+              <tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>高程差 ΔH</th></tr>
+            </thead>
+            <tbody id="effectFireTableBody">
+              <tr><td colspan="4" style="color:#8395a7;">請點擊上方按鈕計算諸元</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="result-box" style="border-color:#4cd137;">
+          <div class="result-title" style="color:#4cd137;">方向機 / 高低機 手轉數計算</div>
+          <div id="handwheelTurnsDisplay" style="font-size:0.75rem; color:#e0e6ed; line-height:1.4;">-</div>
+        </div>
+
+        <div class="section-title" style="margin-top:8px;">最新任務射擊口令表</div>
+        <div class="command-output-box" id="commandOutputBox">等待產製射擊指令...</div>
+
+        <div class="section-title" style="margin-top:12px; color:#e1b12c; border-color:#e1b12c;">效力射任務歷史履歷</div>
+        <div id="effectHistoryContainer">
+          <div style="font-size:0.75rem; color:#8395a7; text-align:center;">尚無效力射歷史紀錄</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="main-content" id="canvasMainContainer">
+      <div class="canvas-container" id="canvasContainer">
+        <canvas id="boardCanvas" width="760" height="760"></canvas>
+      </div>
+      <div class="board-hint" id="viewHint">💡 雙指滑動可旋轉與縮放 (最高2000%)｜單指拖曳平移</div>
+      
+      <div class="board-layer-bar">
+        <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
+        <label><input type="checkbox" id="boardLayerTrial" checked onchange="calculateAndDraw()"> ⊕ #2砲試射彈著點</label>
+        <label><input type="checkbox" id="boardLayerWing" checked onchange="calculateAndDraw()"> ◆ #1/#3砲翼次彈著</label>
+        <label><input type="checkbox" id="boardLayerEffect" checked onchange="calculateAndDraw()"> 🔲 效力射涵蓋區</label>
+      </div>
+    </div>
+
+    <div id="mapViewContainer">
+      <div id="mapView"></div>
+      <div class="map-layer-bar">
+        <label><input type="checkbox" id="layerTarget" checked onchange="updateMapMarkers()"> 🎯 目標點</label>
+        <label><input type="checkbox" id="layerTrial" checked onchange="updateMapMarkers()"> ⊕ #2砲試射彈著點</label>
+        <label><input type="checkbox" id="layerWing" checked onchange="updateMapMarkers()"> ◆ #1/#3砲翼次彈著</label>
+        <label><input type="checkbox" id="layerEffect" checked onchange="updateMapMarkers()"> 🔲 效力射涵蓋區</label>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mgrs@2.0.0/dist/mgrs.min.js"></script>
+
+  <script>
+    const canvas = document.getElementById('boardCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvasContainer');
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const fixedBoardRadius = canvas.width / 2 - 55;
+
+    let currentMainView = 'sidebar'; 
+    let currentTab = 'tab1';
+    let currentMode = 'grid8';
+
+    let boardRotationMil = 0; 
+    let contentZoomScale = 1.0; 
+    let panOffsetX = 0; 
+    let panOffsetY = 0; 
+    let maxRange = 3000;       
+
+    let globalGuns = [];       
+    let globalTargets = [];    
+    let correctionShots = [];  
+    let wingShotRounds = [];   
+    let effectFireHistory = []; 
+
+    let isReindexMode = true; 
+    let baseAzimuthM2T1 = 0;
+    let wakeLock = null;
+
+    let map = null;
+    let mapMarkersGroup = null;
+
+    async function toggleKeepAwake(enable) {
+      if (enable) {
+        try {
+          if ('wakeLock' in navigator) {
+            wakeLock = await navigator.wakeLock.request('screen');
+          } else {
+            alert('⚠️ 您的瀏覽器不支援 Wake Lock 螢幕恆亮功能');
+            document.getElementById('keepAwakeToggle').checked = false;
+          }
+        } catch (err) {
+          console.error(`螢幕恆亮啟用失敗: ${err.name}, ${err.message}`);
+          document.getElementById('keepAwakeToggle').checked = false;
+        }
+      } else {
+        if (wakeLock !== null) {
+          await wakeLock.release();
+          wakeLock = null;
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLock !== null && document.visibilityState === 'visible') {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    });
+
+    function getDistinctColor(index) {
+      const hue = Math.round((index * 137.5) % 360);
+      return `hsl(${hue}, 90%, 60%)`;
+    }
+
+    function initDefaultTargets() {
+      const defaultTargetsData = [
+        { id: 'T1', e: '4945', n: '2091', alt: 50 },
+        { id: 'T2', e: '4945', n: '2081', alt: 50 },
+        { id: 'T3', e: '4946', n: '2071', alt: 50 },
+        { id: 'T4', e: '4946', n: '2061', alt: 50 }
+      ];
+
+      const container = document.getElementById('targetInputsContainer');
+      container.innerHTML = '';
+
+      defaultTargetsData.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'input-row target-input-row';
+        row.dataset.id = t.id;
+        row.innerHTML = `
+          <label>目標 ${t.id}:</label>
+          <div class="grid-input-row">
+            <input type="text" class="tE8" value="${t.e}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+            <span>/</span>
+            <input type="text" class="tN8" value="${t.n}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+            <span>/</span>
+            <input type="number" class="tAlt" value="${t.alt}" style="width:45px;" onchange="calculateAndDraw()">
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function addNewTargetRow(targetIdStr = null, defaultE = '4940', defaultN = '2000', defaultAlt = 50) {
+      const container = document.getElementById('targetInputsContainer');
+      const count = container.querySelectorAll('.target-input-row').length + 1;
+      const tid = targetIdStr || `T${count}`;
+
+      const row = document.createElement('div');
+      row.className = 'input-row target-input-row';
+      row.dataset.id = tid;
+      row.innerHTML = `
+        <label>目標 ${tid}:</label>
+        <div class="grid-input-row">
+          <input type="text" class="tE8" value="${defaultE}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+          <span>/</span>
+          <input type="text" class="tN8" value="${defaultN}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+          <span>/</span>
+          <input type="number" class="tAlt" value="${defaultAlt}" style="width:45px;" onchange="calculateAndDraw()">
+        </div>
+      `;
+      container.appendChild(row);
+      calculateAndDraw();
+    }
+
+    function switchMainTab(viewType) {
+      currentMainView = viewType;
+      document.getElementById('btnMainSidebarTab').classList.toggle('active', viewType === 'sidebar');
+      document.getElementById('btnMainCanvasTab').classList.toggle('active', viewType === 'canvas');
+      document.getElementById('btnMainMapTab').classList.toggle('active', viewType === 'map');
+
+      const sidebar = document.getElementById('sidebarContainer');
+      const canvasWin = document.getElementById('canvasMainContainer');
+      const mapWin = document.getElementById('mapViewContainer');
+
+      if (window.innerWidth >= 850) {
+        sidebar.style.display = 'flex';
+        if (viewType === 'map') {
+          canvasWin.style.display = 'none';
+          mapWin.style.display = 'flex';
+          initMap();
+          setTimeout(() => { if (map) map.invalidateSize(); updateMapMarkers(); }, 200);
+        } else {
+          canvasWin.style.display = 'flex';
+          mapWin.style.display = 'none';
+        }
+      } else {
+        sidebar.style.display = (viewType === 'sidebar') ? 'flex' : 'none';
+        canvasWin.style.display = (viewType === 'canvas') ? 'flex' : 'none';
+        mapWin.style.display = (viewType === 'map') ? 'flex' : 'none';
+
+        if (viewType === 'map') {
+          initMap();
+          setTimeout(() => { if (map) map.invalidateSize(); updateMapMarkers(); }, 200);
+        }
+      }
+    }
+
+    window.addEventListener('resize', () => { switchMainTab(currentMainView); });
+
+    function initMap() {
+      if (map) return;
+
+      const mapContainer = document.getElementById('mapView');
+      if (!mapContainer) return;
+
+      map = L.map('mapView', {
+        center: [26.368, 120.493],
+        zoom: 15,
+        zoomControl: true
+      });
+
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
+      const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: 'Tiles © Esri' });
+      const nlscEmap = L.tileLayer('https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}', { maxZoom: 19, attribution: '© 國土測繪中心' });
+
+      osm.addTo(map);
+      L.control.layers({ "全球街道圖": osm, "高解析衛星圖": esriSat, "電子地圖": nlscEmap }, null, { position: 'topright' }).addTo(map);
+      mapMarkersGroup = L.layerGroup().addTo(map);
+    }
+
+    function parseMGRSToLatLng(e4Str, n4Str) {
+      try {
+        const band = document.getElementById('mgrsBand').value || 'R';
+        const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
+        const e4 = e4Str.toString().trim().padStart(4, '0');
+        const n4 = n4Str.toString().trim().padStart(4, '0');
+        
+        const fullMgrs = `51${band}${sq}${e4}${n4}`;
+        const point = mgrs.toPoint(fullMgrs);
+        return [point[1], point[0]];
+      } catch (e) { return null; }
+    }
+
+    function updateMapMarkers() {
+      if (!map || !mapMarkersGroup) return;
+      mapMarkersGroup.clearLayers();
+
+      const showTarget = document.getElementById('layerTarget').checked;
+      const showTrial = document.getElementById('layerTrial').checked;
+      const showWing = document.getElementById('layerWing').checked;
+      const showEffect = document.getElementById('layerEffect').checked;
+
+      const band = document.getElementById('mgrsBand').value || 'R';
+      const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
+
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+
+      const opLatLng = parseMGRSToLatLng(document.getElementById('opE8').value, document.getElementById('opN8').value);
+      if (opLatLng) {
+        const svg = `<svg width="18" height="18" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="#ff9f43" stroke="#ffffff" stroke-width="6"/></svg>`;
+        const icon = L.divIcon({ html: svg, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
+
+        L.marker(opLatLng, { icon: icon })
+          .bindPopup(`<b>觀測員 (OP)</b><br>MGRS: 51${band} ${sq} ${document.getElementById('opE8').value} ${document.getElementById('opN8').value}<br>標高: ${document.getElementById('opAlt').value}m`)
+          .addTo(mapMarkersGroup);
+      }
+
+      const gunColors = ['#ff4757', '#e1b12c', '#4cd137'];
+      globalGuns.forEach((g, idx) => {
+        const gE4 = Math.round((opE + g.x) / 10);
+        const gN4 = Math.round((opN + g.y) / 10);
+        const gLatLng = parseMGRSToLatLng(gE4, gN4);
+        if (gLatLng) {
+          L.circle(gLatLng, {
+            radius: 3547, color: gunColors[idx % 3], fillColor: gunColors[idx % 3], fillOpacity: 0.05, weight: 1.5, dashArray: '4, 4'
+          }).addTo(mapMarkersGroup);
+
+          L.circleMarker(gLatLng, { radius: 6, color: gunColors[idx % 3], fillColor: gunColors[idx % 3], fillOpacity: 0.9 })
+            .bindPopup(`<b>砲位 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}<br>標高: ${g.alt}m`)
+            .addTo(mapMarkersGroup);
+        }
+      });
+
+      if (showTarget) {
+        globalTargets.forEach((t, idx) => {
+          const tE4 = Math.round((opE + t.x) / 10);
+          const tN4 = Math.round((opN + t.y) / 10);
+          const tLatLng = parseMGRSToLatLng(tE4, tN4);
+          if (tLatLng) {
+            const color = getDistinctColor(idx);
+            L.circleMarker(tLatLng, { radius: 6, color: color, fillColor: color, fillOpacity: 0.9 })
+              .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE4} ${tN4}<br>標高: ${t.alt}m`)
+              .addTo(mapMarkersGroup);
+          }
+        });
+      }
+
+      if (showTrial) {
+        correctionShots.forEach(shot => {
+          const sE4 = Math.round((opE + shot.x) / 10);
+          const sN4 = Math.round((opN + shot.y) / 10);
+          const sLatLng = parseMGRSToLatLng(sE4, sN4);
+          if (sLatLng) {
+            L.circleMarker(sLatLng, { radius: 5, color: shot.color, fillColor: shot.color, fillOpacity: 0.8 })
+              .bindPopup(`<b>#2砲 試射第 ${shot.shotNum} 發 (${shot.targetId})</b>`)
+              .addTo(mapMarkersGroup);
+          }
+        });
+      }
+
+      if (showWing) {
+        wingShotRounds.forEach(round => {
+          round.shots.forEach(shot => {
+            const wE4 = Math.round((opE + shot.x) / 10);
+            const wN4 = Math.round((opN + shot.y) / 10);
+            const wLatLng = parseMGRSToLatLng(wE4, wN4);
+            if (wLatLng) {
+              L.circleMarker(wLatLng, { radius: 5, color: shot.color, fillColor: shot.color, fillOpacity: 0.8 })
+                .bindPopup(`<b>翼次射 ${shot.gunId} 砲 (第 ${round.roundNum} 輪)</b>`)
+                .addTo(mapMarkersGroup);
+          }
+          });
+        });
+      }
+
+      if (showEffect) {
+        effectFireHistory.forEach(item => {
+          if (!item.area) return;
+
+          const area = item.area;
+          const radOT = milToRad(area.azOT);
+          const halfW = area.width / 2;
+          const halfD = area.depth / 2;
+
+          const cornersLocal = [
+            { x: -halfW, y: -halfD },
+            { x: halfW, y: -halfD },
+            { x: halfW, y: halfD },
+            { x: -halfW, y: halfD }
+          ];
+
+          const polygonLatLngs = [];
+          cornersLocal.forEach(pt => {
+            const rotX = pt.x * Math.cos(radOT) - pt.y * Math.sin(radOT);
+            const rotY = pt.x * Math.sin(radOT) + pt.y * Math.cos(radOT);
+
+            const cornerE4 = Math.round((opE + area.centerX + rotX) / 10);
+            const cornerN4 = Math.round((opN + area.centerY + rotY) / 10);
+            const latLng = parseMGRSToLatLng(cornerE4, cornerN4);
+            if (latLng) polygonLatLngs.push(latLng);
+          });
+
+          if (polygonLatLngs.length === 4) {
+            L.polygon(polygonLatLngs, {
+              color: item.color, weight: 2, fillColor: item.color, fillOpacity: 0.25
+            }).bindPopup(`<b>效力射任務: ${item.targetId}</b><br>型態: ${item.sheafName}<br>涵蓋尺寸: ${area.width}m × ${area.depth}m<br>對齊 OT 軸線: ${item.area.azOT} mil`)
+              .addTo(mapMarkersGroup);
+          }
+        });
+      }
+
+      if (opLatLng) map.setView(opLatLng, 15);
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab1Btn').classList.toggle('active', tab === 'tab1');
+      document.getElementById('tab2Btn').classList.toggle('active', tab === 'tab2');
+      document.getElementById('tab3Btn').classList.toggle('active', tab === 'tab3');
+      document.getElementById('tab4Btn').classList.toggle('active', tab === 'tab4');
+      
+      document.getElementById('tab1Content').style.display = (tab === 'tab1') ? 'block' : 'none';
+      document.getElementById('tab2Content').style.display = (tab === 'tab2') ? 'block' : 'none';
+      document.getElementById('tab3Content').style.display = (tab === 'tab3') ? 'block' : 'none';
+      document.getElementById('tab4Content').style.display = (tab === 'tab4') ? 'block' : 'none';
+
+      populateTargetSelects();
+      if (tab === 'tab2') updateOTDataDisplay();
+      calculateAndDraw();
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('btn8Grid').classList.toggle('active', mode === 'grid8');
+      document.getElementById('btnPolar').classList.toggle('active', mode === 'polar');
+      document.getElementById('grid8Inputs').style.display = (mode === 'grid8') ? 'block' : 'none';
+      document.getElementById('polarInputs').style.display = (mode === 'polar') ? 'block' : 'none';
+      calculateAndDraw();
+    }
+
+    function setReindexMode(reindex) {
+      isReindexMode = reindex;
+      document.getElementById('btnReindex').classList.toggle('active', reindex);
+      document.getElementById('btnSpecialCorr').classList.toggle('active', !reindex);
+    }
+
+    function toggleDesignationMethod() {
+      const method = document.getElementById('targetDesignationMethod').value;
+      document.getElementById('knownPointSection').style.display = (method === 'known') ? 'block' : 'none';
+      document.getElementById('polarSection').style.display = (method === 'polar') ? 'block' : 'none';
+      document.getElementById('gridSection').style.display = (method === 'grid') ? 'block' : 'none';
+    }
+
+    function toggleSheafParams() {
+      const sheaf = document.getElementById('sheafTypeSelect').value;
+      const isDistributed = sheaf.includes('section') || sheaf.includes('traverse');
+      document.getElementById('windRow').style.display = isDistributed ? 'flex' : 'none';
+    }
+
+    function toggleDirInput() {
+      const val = document.getElementById('corrDirType').value;
+      document.getElementById('dirValRow').style.display = (val === 'line') ? 'none' : 'flex';
+    }
+    function toggleDistInput() {
+      const val = document.getElementById('corrDistSign').value;
+      document.getElementById('distValRow').style.display = (val === 'good') ? 'none' : 'flex';
+    }
+    function toggleWingDir(gunNum) {
+      const val = document.getElementById(`gun${gunNum}DirType`).value;
+      document.getElementById(`gun${gunNum}DirRow`).style.display = (val === 'line') ? 'none' : 'flex';
+    }
+    function toggleWingDist(gunNum) {
+      const val = document.getElementById(`gun${gunNum}DistSign`).value;
+      document.getElementById(`gun${gunNum}DistRow`).style.display = (val === 'good') ? 'none' : 'flex';
+    }
+
+    function milToRad(mil) { return (mil / 6400) * 2 * Math.PI; }
+    function radToMil(rad) {
+      let mil = (rad / (2 * Math.PI)) * 6400;
+      if (mil < 0) mil += 6400;
+      return mil;
+    }
+    function getRelativeMil(absMil) {
+      let rel = (absMil - baseAzimuthM2T1 + 6400) % 6400;
+      return Math.round(rel);
+    }
+
+    function xyToCanvas(relX, relY) {
+      const rotRad = milToRad(boardRotationMil);
+      const rx = relX * Math.cos(rotRad) - relY * Math.sin(rotRad);
+      const ry = relX * Math.sin(rotRad) + relY * Math.cos(rotRad);
+      const scaledRadius = fixedBoardRadius * contentZoomScale;
+      return {
+        x: centerX + panOffsetX + (rx / maxRange) * scaledRadius,
+        y: centerY + panOffsetY - (ry / maxRange) * scaledRadius
+      };
+    }
+
+    function updateRotationUI() {
+      document.getElementById('rotAngleDisplay').innerText = `${Math.round(boardRotationMil).toString().padStart(4, '0')} mil`;
+      document.getElementById('rotSlider').value = Math.round(boardRotationMil);
+    }
+    function updateZoomUI() {
+      document.getElementById('zoomDisplay').innerText = `${Math.round(contentZoomScale * 100)}%`;
+      document.getElementById('zoomSlider').value = contentZoomScale;
+    }
+    function adjustRotation(deltaMil) { boardRotationMil = (boardRotationMil + deltaMil + 6400) % 6400; updateRotationUI(); calculateAndDraw(); }
+    function onRotationSliderChange(val) { boardRotationMil = parseFloat(val) % 6400; updateRotationUI(); calculateAndDraw(); }
+    function resetRotation() { boardRotationMil = 0; updateRotationUI(); calculateAndDraw(); }
+    
+    function adjustZoom(delta) { contentZoomScale = Math.min(Math.max(0.5, contentZoomScale + delta), 20.0); updateZoomUI(); calculateAndDraw(); }
+    function onZoomSliderChange(val) { contentZoomScale = parseFloat(val); updateZoomUI(); calculateAndDraw(); }
+    function resetViewPort() {
+      contentZoomScale = 1.0; panOffsetX = 0; panOffsetY = 0;
+      updateZoomUI(); calculateAndDraw();
+    }
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const oldZoom = contentZoomScale;
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+      let newZoom = Math.min(Math.max(0.5, oldZoom * zoomFactor), 20.0);
+
+      panOffsetX = mouseX - (mouseX - panOffsetX) * (newZoom / oldZoom);
+      panOffsetY = mouseY - (mouseY - panOffsetY) * (newZoom / oldZoom);
+
+      contentZoomScale = newZoom;
+      updateZoomUI(); calculateAndDraw();
+    }, { passive: false });
+
+    let isDragging = false, startX = 0, startY = 0;
+    let initialTouchDist = null;
+    let initialTouchAngle = null;
+    let initialRotationMil = 0;
+    let initialZoomScale = 1.0;
+
+    canvasContainer.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.clientX - panOffsetX;
+      startY = e.clientY - panOffsetY;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      panOffsetX = e.clientX - startX;
+      panOffsetY = e.clientY - startY;
+      calculateAndDraw();
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    canvasContainer.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        isDragging = true;
+        startX = e.touches[0].clientX - panOffsetX;
+        startY = e.touches[0].clientY - panOffsetY;
+      } else if (e.touches.length === 2) {
+        isDragging = false;
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        initialTouchDist = Math.hypot(dx, dy);
+        initialTouchAngle = Math.atan2(dy, dx);
+        initialRotationMil = boardRotationMil;
+        initialZoomScale = contentZoomScale;
+      }
+    }, { passive: true });
+
+    canvasContainer.addEventListener('touchmove', (e) => {
+      if (isDragging && e.touches.length === 1) {
+        panOffsetX = e.touches[0].clientX - startX;
+        panOffsetY = e.touches[0].clientY - startY;
+        calculateAndDraw();
+      } else if (e.touches.length === 2 && initialTouchDist && initialTouchAngle !== null) {
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        const currentDist = Math.hypot(dx, dy);
+        const currentAngle = Math.atan2(dy, dx);
+
+        const zoomFactor = currentDist / initialTouchDist;
+        contentZoomScale = Math.min(Math.max(0.5, initialZoomScale * zoomFactor), 20.0);
+
+        const angleDiffRad = currentAngle - initialTouchAngle;
+        const angleDiffMil = angleDiffRad * (6400 / (2 * Math.PI));
+        boardRotationMil = (initialRotationMil - angleDiffMil + 64000) % 6400;
+
+        updateRotationUI();
+        updateZoomUI();
+        calculateAndDraw();
+      }
+    }, { passive: true });
+
+    canvasContainer.addEventListener('touchend', () => {
+      isDragging = false;
+      initialTouchDist = null;
+      initialTouchAngle = null;
+    });
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(-milToRad(boardRotationMil));
+      ctx.translate(-centerX, -centerY);
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, fixedBoardRadius + 22, 0, 2 * Math.PI);
+      ctx.fillStyle = '#1c262f'; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#3c4858'; ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, fixedBoardRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = '#141d22'; ctx.fill();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#2d3d36'; ctx.stroke();
+
+      for (let m = 0; m < 6400; m += 10) {
+        const rad = milToRad(m);
+        const cos = Math.sin(rad), sin = -Math.cos(rad);
+        let tickLen = (m % 100 === 0) ? 14 : ((m % 50 === 0) ? 8 : 4);
+        const xOuter = centerX + (fixedBoardRadius + tickLen) * cos;
+        const yOuter = centerY + (fixedBoardRadius + tickLen) * sin;
+        const xInner = centerX + fixedBoardRadius * cos;
+        const yInner = centerY + fixedBoardRadius * sin;
+
+        ctx.beginPath(); ctx.moveTo(xInner, yInner); ctx.lineTo(xOuter, yOuter);
+        ctx.strokeStyle = (m % 100 === 0) ? '#00a8ff' : (m % 50 === 0 ? '#8395a7' : '#3c4858');
+        ctx.lineWidth = (m % 100 === 0) ? 1.5 : 0.8; ctx.stroke();
+
+        if (m % 100 === 0) {
+          const tx = centerX + (fixedBoardRadius + 28) * cos;
+          const ty = centerY + (fixedBoardRadius + 28) * sin;
+          ctx.save();
+          ctx.translate(tx, ty);
+          ctx.rotate(milToRad(boardRotationMil));
+          ctx.fillStyle = (m % 400 === 0) ? '#4cd137' : '#e0e6ed';
+          ctx.font = (m % 400 === 0) ? 'bold 11px Arial' : '10px Arial';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText((m / 100).toString().padStart(2, '0'), 0, 0);
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+
+      const innerCenter = { x: centerX + panOffsetX, y: centerY + panOffsetY };
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, fixedBoardRadius - 1, 0, 2 * Math.PI);
+      ctx.clip(); 
+
+      const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
+      for (let d = 500; d <= maxRange * 2; d += 500) {
+        const r = (d / maxRange) * scaledBoardRadius;
+        if (r > fixedBoardRadius * 2.0) break;
+        ctx.beginPath();
+        ctx.arc(innerCenter.x, innerCenter.y, r, 0, 2 * Math.PI);
+        ctx.strokeStyle = (d % 1000 === 0) ? '#2e4a3e' : '#1e3028';
+        ctx.lineWidth = (d % 1000 === 0) ? 1.5 : 0.8;
+        ctx.stroke();
+        if (d % 1000 === 0 && r < fixedBoardRadius) {
+          ctx.fillStyle = '#486558'; ctx.font = '10px Arial';
+          ctx.fillText(`${d}m`, innerCenter.x + 5, innerCenter.y - r + 12);
+        }
+      }
+
+      globalGuns.forEach(gun => {
+        const gunPos = xyToCanvas(gun.x, gun.y);
+        const r3547 = (3547 / maxRange) * scaledBoardRadius;
+        ctx.beginPath();
+        ctx.arc(gunPos.x, gunPos.y, r3547, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'rgba(225, 177, 44, 0.25)';
+        ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+      });
+
+      const opPos = xyToCanvas(0, 0);
+      ctx.beginPath();
+      ctx.moveTo(opPos.x, opPos.y - 7);
+      ctx.lineTo(opPos.x + 6, opPos.y + 5);
+      ctx.lineTo(opPos.x - 6, opPos.y + 5);
+      ctx.closePath();
+      ctx.fillStyle = '#ff9f43';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#ff9f43'; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('OP', opPos.x + 8, opPos.y - 2);
+
+      ctx.restore();
+    }
+
+    function drawTargetPoint(pos, label, color) {
+      const r = 4.5;
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(label, pos.x + r + 3, pos.y - r - 2);
+    }
+
+    function drawTrialShotPoint(pos, label, color) {
+      const r = 5.5;
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(pos.x - r - 2, pos.y); ctx.lineTo(pos.x + r + 2, pos.y);
+      ctx.moveTo(pos.x, pos.y - r - 2); ctx.lineTo(pos.x, pos.y + r + 2);
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+
+      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(label, pos.x + r + 4, pos.y - r - 2);
+    }
+
+    function drawWingShotPoint(pos, label, color) {
+      const sz = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y - sz);
+      ctx.lineTo(pos.x + sz, pos.y);
+      ctx.lineTo(pos.x, pos.y + sz);
+      ctx.lineTo(pos.x - sz, pos.y);
+      ctx.closePath();
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
+
+      ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(label, pos.x + sz + 3, pos.y - sz - 2);
+    }
+
+    function drawStar(cx, cy, spikes, outerRadius, innerRadius, color) {
+      let rot = Math.PI / 2 * 3;
+      let x = cx, y = cy;
+      let step = Math.PI / spikes;
+
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - outerRadius);
+      for (let i = 0; i < spikes; i++) {
+        x = cx + Math.cos(rot) * outerRadius;
+        y = cy + Math.sin(rot) * outerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+
+        x = cx + Math.cos(rot) * innerRadius;
+        y = cy + Math.sin(rot) * innerRadius;
+        ctx.lineTo(x, y);
+        rot += step;
+      }
+      ctx.lineTo(cx, cy - outerRadius);
+      ctx.closePath();
+      ctx.fillStyle = color; ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+    }
+
+    function calculateAndDraw() {
+      globalGuns = [];
+      globalTargets = [];
+
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+
+      if (currentMode === 'grid8') {
+        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+        for (let i = 1; i <= 3; i++) {
+          const mE = getVal(`m${i}E8`) * 10;
+          const mN = getVal(`m${i}N8`) * 10;
+          const mAlt = getVal(`m${i}Alt`);
+          globalGuns.push({ id: `#${i}`, x: mE - opE, y: mN - opN, alt: mAlt });
+        }
+
+        const targetRows = document.querySelectorAll('.target-input-row');
+        targetRows.forEach(row => {
+          const tid = row.dataset.id;
+          const tE = (parseFloat(row.querySelector('.tE8').value) || 0) * 10;
+          const tN = (parseFloat(row.querySelector('.tN8').value) || 0) * 10;
+          const tAlt = parseFloat(row.querySelector('.tAlt').value) || 0;
+          globalTargets.push({ id: tid, x: tE - opE, y: tN - opN, alt: tAlt });
+        });
+      } else {
+        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+        const azT1 = getVal('azT1'), distT1 = getVal('distT1');
+        const azM1 = getVal('azM1'), distM1 = getVal('distM1');
+        const radT = milToRad(azT1), radM = milToRad(azM1);
+        globalGuns.push({ id: '#1', x: distM1 * Math.sin(radM), y: distM1 * Math.cos(radM), alt: 85 });
+        globalGuns.push({ id: '#2', x: distM1 * Math.sin(radM) + 30, y: distM1 * Math.cos(radM) - 20, alt: 85 });
+        globalGuns.push({ id: '#3', x: distM1 * Math.sin(radM) + 60, y: distM1 * Math.cos(radM) - 40, alt: 85 });
+        globalTargets.push({ id: 'T1', x: distT1 * Math.sin(radT), y: distT1 * Math.cos(radT), alt: 50 });
+      }
+
+      const gun1 = globalGuns.find(g => g.id === '#1');
+      const gun2 = globalGuns.find(g => g.id === '#2') || globalGuns[0];
+      const gun3 = globalGuns.find(g => g.id === '#3');
+      const target1 = globalTargets.find(t => t.id === 'T1') || globalTargets[0];
+
+      if (gun2 && target1) {
+        baseAzimuthM2T1 = radToMil(Math.atan2(target1.x - gun2.x, target1.y - gun2.y));
+      }
+
+      if (gun1 && gun2 && gun3 && target1) {
+        const dx2t = target1.x - gun2.x, dy2t = target1.y - gun2.y;
+        const dist2t = Math.hypot(dx2t, dy2t);
+        const ux = dist2t > 0 ? dx2t / dist2t : 0, uy = dist2t > 0 ? dy2t / dist2t : 1;
+        const nx = -uy, ny = ux;
+
+        const v1 = (gun1.x - gun2.x) * nx + (gun1.y - gun2.y) * ny;
+        const v3 = (gun3.x - gun2.x) * nx + (gun3.y - gun2.y) * ny;
+
+        document.getElementById('dispM2M1').innerText = `${Math.abs(v1).toFixed(1)} m (${v1 > 0 ? '右側' : '左側'})`;
+        document.getElementById('dispM3M2').innerText = `${Math.abs(v3).toFixed(1)} m (${v3 > 0 ? '右側' : '左側'})`;
+      }
+
+      let maxDist = 1200;
+      globalGuns.forEach(g => maxDist = Math.max(maxDist, Math.hypot(g.x, g.y)));
+      globalTargets.forEach(t => maxDist = Math.max(maxDist, Math.hypot(t.x, t.y)));
+      correctionShots.forEach(s => maxDist = Math.max(maxDist, Math.hypot(s.x, s.y)));
+
+      maxDist = Math.max(maxDist, 1000);
+      maxRange = Math.max(2000, Math.min(10000, Math.ceil((maxDist * 1.35) / 500) * 500));
+
+      drawBoard();
+
+      const resHeader = document.getElementById('resultTableHeader');
+      const relHeader = document.getElementById('relativeTableHeader');
+      resHeader.innerHTML = '<th>砲位 \ 目標</th>';
+      relHeader.innerHTML = '<th>砲位 \ 目標</th>';
+      globalTargets.forEach(t => {
+        resHeader.innerHTML += `<th>${t.id}</th>`;
+        relHeader.innerHTML += `<th>${t.id}</th>`;
+      });
+
+      const tbody = document.getElementById('resultTableBody');
+      const relTbody = document.getElementById('relativeTableBody');
+      tbody.innerHTML = ''; relTbody.innerHTML = '';
+
+      globalGuns.forEach(gun => {
+        const tr = document.createElement('tr');
+        const relTr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-weight:bold; color:#ff4757;">${gun.id}</td>`;
+        relTr.innerHTML = `<td style="font-weight:bold; color:#ff4757;">${gun.id}</td>`;
+
+        globalTargets.forEach(target => {
+          const dx = target.x - gun.x, dy = target.y - gun.y;
+          const dist = Math.hypot(dx, dy);
+          const az = radToMil(Math.atan2(dx, dy));
+          const relMil = getRelativeMil(az);
+          const deltaH = target.alt - gun.alt;
+
+          tr.innerHTML += `<td><span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span><br><span class="val-alt">ΔH:${deltaH}m</span></td>`;
+          relTr.innerHTML += `<td><span class="val-rel">${relMil.toString().padStart(4, '0')}</span><br><span class="val-dist">${Math.round(dist)}m</span></td>`;
+        });
+        tbody.appendChild(tr); relTbody.appendChild(relTr);
+      });
+
+      const showBoardTarget = document.getElementById('boardLayerTarget').checked;
+      const showBoardTrial = document.getElementById('boardLayerTrial').checked;
+      const showBoardWing = document.getElementById('boardLayerWing').checked;
+      const showBoardEffect = document.getElementById('boardLayerEffect').checked;
+
+      if (showBoardTarget) {
+        globalTargets.forEach((t, idx) => drawTargetPoint(xyToCanvas(t.x, t.y), t.id, getDistinctColor(idx)));
+      }
+
+      globalGuns.forEach(g => {
+        const pos = xyToCanvas(g.x, g.y);
+        ctx.beginPath(); ctx.arc(pos.x, pos.y, 3.5, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ff4757'; ctx.fill();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = '#ff4757'; ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(g.id, pos.x + 6, pos.y - 5);
+      });
+
+      if (showBoardTrial) {
+        correctionShots.forEach(shot => {
+          const pos = xyToCanvas(shot.x, shot.y);
+          drawTrialShotPoint(pos, `第${shot.shotNum}發`, shot.color);
+          const basePos = xyToCanvas(shot.parentX, shot.parentY);
+          ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
+          ctx.strokeStyle = shot.color; ctx.setLineDash([3, 3]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+        });
+      }
+
+      if (showBoardWing) {
+        wingShotRounds.forEach(round => {
+          round.shots.forEach(shot => {
+            const pos = xyToCanvas(shot.x, shot.y);
+            drawWingShotPoint(pos, `${shot.gunId}(${round.roundNum})`, shot.color);
+            const basePos = xyToCanvas(shot.parentX, shot.parentY);
+            ctx.beginPath(); ctx.moveTo(basePos.x, basePos.y); ctx.lineTo(pos.x, pos.y);
+            ctx.strokeStyle = shot.color; ctx.setLineDash([2, 2]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
+          });
+        });
+      }
+
+      if (showBoardEffect) {
+        effectFireHistory.forEach(item => {
+          if (!item.area) return;
+          const posCenter = xyToCanvas(item.area.centerX, item.area.centerY);
+          const scaledBoardRadius = fixedBoardRadius * contentZoomScale;
+          const wPx = (item.area.width / maxRange) * scaledBoardRadius;
+          const dPx = (item.area.depth / maxRange) * scaledBoardRadius;
+
+          ctx.save();
+          ctx.translate(posCenter.x, posCenter.y);
+          ctx.rotate(-milToRad(boardRotationMil - item.area.azOT));
+          ctx.fillStyle = item.color.replace('hsl', 'hsla').replace(')', ', 0.25)');
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(-wPx / 2, -dPx / 2, wPx, dPx);
+          ctx.strokeRect(-wPx / 2, -dPx / 2, wPx, dPx);
+          ctx.restore();
+
+          drawStar(posCenter.x, posCenter.y, 5, 7, 3.5, item.color);
+        });
+      }
+
+      if (currentTab === 'tab2') renderCorrectionResultTable();
+      if (currentMainView === 'map') updateMapMarkers();
+    }
+
+    function populateTargetSelects() {
+      ['corrTargetSelect', 'wingTargetSelect', 'knownPointSelect'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        select.innerHTML = '';
+        globalTargets.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id; opt.innerText = `目標 ${t.id}`;
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    function updateOTDataDisplay() {
+      const targetId = document.getElementById('corrTargetSelect').value;
+      const target = globalTargets.find(t => t.id === targetId);
+      if (!target) return;
+      document.getElementById('corrAzOT').value = Math.round(radToMil(Math.atan2(target.x, target.y)));
+      document.getElementById('corrDistOT').value = Math.round(Math.hypot(target.x, target.y));
+    }
+
+    function addCorrectionShot() {
+      const targetId = document.getElementById('corrTargetSelect').value;
+      const target = globalTargets.find(t => t.id === targetId);
+      if (!target) return;
+
+      let parentX = target.x, parentY = target.y;
+      const sameTargetShots = correctionShots.filter(s => s.targetId === targetId);
+      if (sameTargetShots.length > 0) {
+        parentX = sameTargetShots[sameTargetShots.length - 1].x;
+        parentY = sameTargetShots[sameTargetShots.length - 1].y;
+      }
+
+      const azOT = parseFloat(document.getElementById('corrAzOT').value) || 0;
+      const distOT = parseFloat(document.getElementById('corrDistOT').value) || 1000;
+      const radOT = milToRad(azOT);
+
+      const dirType = document.getElementById('corrDirType').value;
+      let shiftW = 0;
+      let dirCmdStr = '原方向';
+      if (dirType !== 'line') {
+        const isRight = document.getElementById('corrDirSign').value === 'right';
+        const dirSign = isRight ? 1 : -1;
+        const dirVal = parseFloat(document.getElementById('corrDirVal').value) || 0;
+        shiftW = (dirType === 'mil') ? (dirVal * distOT / 1000) * dirSign : dirVal * dirSign;
+        dirCmdStr = `${isRight ? '右' : '左'} ${dirVal}${dirType === 'mil' ? '密位' : '米'}`;
+      }
+
+      const distSignVal = document.getElementById('corrDistSign').value;
+      let shiftR = 0;
+      let distCmdStr = '原距離';
+      if (distSignVal !== 'good') {
+        const isAdd = distSignVal === 'add';
+        const distSign = isAdd ? 1 : -1;
+        const distVal = parseFloat(document.getElementById('corrDistVal').value) || 0;
+        shiftR = distVal * distSign;
+        distCmdStr = `${isAdd ? '加' : '減'} ${distVal}米`;
+      }
+
+      const deltaX = shiftR * Math.sin(radOT) + shiftW * Math.cos(radOT);
+      const deltaY = shiftR * Math.cos(radOT) - shiftW * Math.sin(radOT);
+      const newShotNum = correctionShots.length + 1;
+
+      correctionShots.push({
+        shotNum: newShotNum, targetId: targetId,
+        x: parentX + deltaX, y: parentY + deltaY,
+        parentX: parentX, parentY: parentY,
+        azOT: azOT, distOT: distOT,
+        shiftW: shiftW, shiftR: shiftR,
+        cmdStr: `${dirCmdStr}，${distCmdStr}`,
+        color: getDistinctColor(newShotNum + 10)
+      });
+
+      calculateAndDraw();
+    }
+
+    function resetCorrections() { correctionShots = []; calculateAndDraw(); }
+
+    function renderCorrectionResultTable() {
+      const tbody = document.getElementById('corrResultTableBody');
+      tbody.innerHTML = '';
+      if (correctionShots.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#8395a7;">尚未下達落彈修正口令</td></tr>`;
+        return;
+      }
+      correctionShots.forEach(shot => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-weight:bold; color:${shot.color};">第 ${shot.shotNum} 發 (${shot.targetId})</td>`;
+        globalGuns.forEach(gun => {
+          const dx = shot.x - gun.x, dy = shot.y - gun.y;
+          const dist = Math.hypot(dx, dy), az = radToMil(Math.atan2(dx, dy)), relMil = getRelativeMil(az);
+          tr.innerHTML += `<td><span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span> / <span class="val-rel">[${relMil.toString().padStart(4, '0')}]</span><br><span class="val-dist">${Math.round(dist)}m</span></td>`;
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* 修正後的翼次射邏輯：繼承各砲上一輪的實際彈著點 */
+    function addWingShots() {
+      const targetId = document.getElementById('wingTargetSelect').value;
+      const target = globalTargets.find(t => t.id === targetId);
+      if (!target) return;
+
+      // 1. 取得 #2 砲最終試射彈著點（作為第 1 輪翼次射的初始參考點）
+      let m2FinalHit = { x: target.x, y: target.y };
+      const sameTargetShots = correctionShots.filter(s => s.targetId === targetId);
+      if (sameTargetShots.length > 0) {
+        const lastShot = sameTargetShots[sameTargetShots.length - 1];
+        m2FinalHit = { x: lastShot.x, y: lastShot.y };
+      }
+
+      const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[1];
+      const dxM2 = m2FinalHit.x - m2Gun.x, dyM2 = m2FinalHit.y - m2Gun.y;
+      const azM2Final = Math.atan2(dxM2, dyM2);
+      const distM2Final = Math.hypot(dxM2, dyM2);
+
+      const azOT = radToMil(Math.atan2(target.x, target.y));
+      const distOT = Math.hypot(target.x, target.y);
+      const radOT = milToRad(azOT);
+
+      let roundShots = [];
+      const gun1 = globalGuns.find(g => g.id === '#1');
+      const gun3 = globalGuns.find(g => g.id === '#3');
+
+      // 2. 檢查該目標上一輪翼次射的歷史紀錄（確保 #1、#3 砲各自繼承上一發彈著）
+      const sameTargetWingRounds = wingShotRounds.filter(r => r.targetId === targetId);
+      const lastRound = sameTargetWingRounds.length > 0 ? sameTargetWingRounds[sameTargetWingRounds.length - 1] : null;
+
+      [
+        { gun: gun1, prefix: 'gun1', color: '#54a0ff', id: '#1' },
+        { gun: gun3, prefix: 'gun3', color: '#4cd137', id: '#3' }
+      ].forEach(item => {
+        if (!item.gun) return;
+
+        // 基準點確定：若已有上一輪彈著，則繼承上一輪；否則以 #2 砲最終彈著平行推算為初始點
+        let baseHitX, baseHitY;
+        if (lastRound) {
+          const prevShot = lastRound.shots.find(s => s.gunId === item.id);
+          if (prevShot) {
+            baseHitX = prevShot.x;
+            baseHitY = prevShot.y;
+          } else {
+            baseHitX = item.gun.x + distM2Final * Math.sin(azM2Final);
+            baseHitY = item.gun.y + distM2Final * Math.cos(azM2Final);
+          }
+        } else {
+          baseHitX = item.gun.x + distM2Final * Math.sin(azM2Final);
+          baseHitY = item.gun.y + distM2Final * Math.cos(azM2Final);
+        }
+
+        const dirType = document.getElementById(`${item.prefix}DirType`).value;
+        let shiftW = 0;
+        let dirCmdStr = '原方向';
+        if (dirType !== 'line') {
+          const isRight = document.getElementById(`${item.prefix}DirSign`).value === 'right';
+          const sign = isRight ? 1 : -1;
+          const val = parseFloat(document.getElementById(`${item.prefix}DirVal`).value) || 0;
+          shiftW = (dirType === 'mil') ? (val * distOT / 1000) * sign : val * sign;
+          dirCmdStr = `${isRight ? '右' : '左'} ${val}${dirType === 'mil' ? '密位' : '米'}`;
+        }
+
+        const distSignVal = document.getElementById(`${item.prefix}DistSign`).value;
+        let shiftR = 0;
+        let distCmdStr = '原距離';
+        if (distSignVal !== 'good') {
+          const isAdd = distSignVal === 'add';
+          const sign = isAdd ? 1 : -1;
+          const val = parseFloat(document.getElementById(`${item.prefix}DistVal`).value) || 0;
+          shiftR = val * sign;
+          distCmdStr = `${isAdd ? '加' : '減'} ${val}米`;
+        }
+
+        const deltaX = shiftR * Math.sin(radOT) + shiftW * Math.cos(radOT);
+        const deltaY = shiftR * Math.cos(radOT) - shiftW * Math.sin(radOT);
+
+        roundShots.push({
+          gunId: item.id, color: item.color,
+          x: baseHitX + deltaX, y: baseHitY + deltaY,
+          shiftW: shiftW, shiftR: shiftR,
+          cmdStr: `${dirCmdStr}，${distCmdStr}`,
+          parentX: baseHitX, parentY: baseHitY
+        });
+      });
+
+      wingShotRounds.push({
+        roundNum: wingShotRounds.length + 1,
+        targetId: targetId,
+        shots: roundShots
+      });
+
+      calculateAndDraw();
+      renderWingResultTable();
+    }
+
+    function resetWingShots() {
+      wingShotRounds = [];
+      calculateAndDraw();
+      document.getElementById('wingResultTableBody').innerHTML = `<tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>`;
+    }
+
+    function renderWingResultTable() {
+      const tbody = document.getElementById('wingResultTableBody');
+      tbody.innerHTML = '';
+      if (wingShotRounds.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>`;
+        return;
+      }
+      wingShotRounds.forEach(round => {
+        const tr = document.createElement('tr');
+        let html = `<td style="font-weight:bold; color:#e1b12c;">第 ${round.roundNum} 輪 (${round.targetId})</td>`;
+
+        ['#1', '#3'].forEach(gunId => {
+          const shot = round.shots.find(s => s.gunId === gunId);
+          const gun = gunId === '#1' ? globalGuns.find(g => g.id === '#1') : globalGuns.find(g => g.id === '#3');
+          if (shot && gun) {
+            const dx = shot.x - gun.x, dy = shot.y - gun.y;
+            const dist = Math.hypot(dx, dy), az = radToMil(Math.atan2(dx, dy)), relMil = getRelativeMil(az);
+            html += `<td>
+              <span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span> / <span class="val-rel">[${relMil.toString().padStart(4, '0')}]</span><br>
+              <span class="val-dist">${Math.round(dist)}m</span>
+            </td>`;
+          } else {
+            html += `<td>-</td>`;
+          }
+        });
+
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function executeEffectFire() {
+      const method = document.getElementById('targetDesignationMethod').value;
+      const targetName = document.getElementById('newTargetName').value.trim() || `T${globalTargets.length + 1}`;
+      
+      let newX = 0, newY = 0, newAlt = 50, azOT = 0;
+      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
+      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+
+      if (method === 'known') {
+        const baseId = document.getElementById('knownPointSelect').value;
+        const baseTarget = globalTargets.find(t => t.id === baseId);
+        if (!baseTarget) return;
+
+        azOT = parseFloat(document.getElementById('kpAzOT').value) || 0;
+        const radOT = milToRad(azOT);
+
+        const dirSign = document.getElementById('kpDirSign').value === 'right' ? 1 : -1;
+        const shiftW = (parseFloat(document.getElementById('kpShiftDir').value) || 0) * dirSign;
+
+        const distSign = document.getElementById('kpDistSign').value === 'add' ? 1 : -1;
+        const shiftR = (parseFloat(document.getElementById('kpShiftDist').value) || 0) * distSign;
+
+        const deltaX = shiftR * Math.sin(radOT) + shiftW * Math.cos(radOT);
+        const deltaY = shiftR * Math.cos(radOT) - shiftW * Math.sin(radOT);
+
+        newX = baseTarget.x + deltaX;
+        newY = baseTarget.y + deltaY;
+        newAlt = baseTarget.alt;
+
+      } else if (method === 'polar') {
+        azOT = parseFloat(document.getElementById('polarNewAz').value) || 0;
+        const distOT = parseFloat(document.getElementById('polarNewDist').value) || 1000;
+        newAlt = parseFloat(document.getElementById('polarNewAlt').value) || 50;
+        const radOT = milToRad(azOT);
+
+        newX = distOT * Math.sin(radOT);
+        newY = distOT * Math.cos(radOT);
+
+      } else if (method === 'grid') {
+        const gE = (parseFloat(document.getElementById('gridNewE').value) || 0) * 10;
+        const gN = (parseFloat(document.getElementById('gridNewN').value) || 0) * 10;
+        newAlt = parseFloat(document.getElementById('gridNewAlt').value) || 50;
+
+        newX = gE - opE;
+        newY = gN - opN;
+        azOT = radToMil(Math.atan2(newX, newY));
+      }
+
+      const e8Str = Math.round((opE + newX) / 10).toString().padStart(4, '0');
+      const n8Str = Math.round((opN + newY) / 10).toString().padStart(4, '0');
+      
+      let existingTarget = globalTargets.find(t => t.id === targetName);
+      if (!existingTarget) {
+        addNewTargetRow(targetName, e8Str, n8Str, newAlt);
+      }
+
+      const sheafSelect = document.getElementById('sheafTypeSelect');
+      const sheaf = sheafSelect.value;
+      const sheafName = sheafSelect.options[sheafSelect.selectedIndex].text;
+      const windFromRight = document.getElementById('windDirSelect').value === 'left_to_right';
+
+      let areaW = 50, areaD = 50;
+      if (sheaf === 'section_sheaf') { areaW = 240; areaD = 50; }
+      else if (sheaf === 'traverse_4') { areaW = 300; areaD = 30; }
+      else if (sheaf === 'traverse_6') { areaW = 300; areaD = 50; }
+      else if (sheaf === 'search_2') { areaW = 50; areaD = 100; }
+      else if (sheaf === 'search_6') { areaW = 100; areaD = 100; }
+      else if (sheaf === 'parallel_front') { areaW = 120; areaD = 50; }
+
+      const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[0];
+      const mtDistM2 = Math.hypot(newX - m2Gun.x, newY - m2Gun.y);
+
+      let gunElements = [];
+      const tbody = document.getElementById('effectFireTableBody');
+      tbody.innerHTML = '';
+
+      globalGuns.forEach(gun => {
+        let targetX = newX, targetY = newY;
+
+        const radOT = milToRad(azOT);
+        let shiftW = 0, shiftD = 0;
+
+        if (sheaf === 'section_sheaf') {
+          shiftW = windFromRight ? 50 : -50;
+        } else if (sheaf === 'traverse_4') {
+          shiftW = windFromRight ? 50 : -50;
+          if (gun.id === '#1') shiftW += 100;
+          if (gun.id === '#3') shiftW -= 100;
+        } else if (sheaf === 'traverse_6') {
+          shiftW = windFromRight ? 25 : -25;
+          if (gun.id === '#1') shiftW += 100;
+          if (gun.id === '#3') shiftW -= 100;
+        } else if (sheaf.includes('search')) {
+          shiftD = 25;
+        }
+
+        targetX += shiftD * Math.sin(radOT) + shiftW * Math.cos(radOT);
+        targetY += shiftD * Math.cos(radOT) - shiftW * Math.sin(radOT);
+
+        const dx = targetX - gun.x, dy = targetY - gun.y;
+        const dist = Math.hypot(dx, dy);
+        let az = radToMil(Math.atan2(dx, dy));
+        const deltaH = newAlt - gun.alt;
+
+        if (!isReindexMode) az = (az + 10) % 6400;
+
+        gunElements.push({ gunId: gun.id, az: Math.round(az), dist: Math.round(dist), deltaH: deltaH });
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:bold; color:#ff4757;">${gun.id}</td>
+          <td class="val-az">${Math.round(az).toString().padStart(4, '0')}</td>
+          <td class="val-dist">${Math.round(dist)}m</td>
+          <td class="val-alt">ΔH:${deltaH}m</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      const mtK = mtDistM2 / 1000;
+      let turnText = '', cmdText = '';
+      const specialCorrPrefix = !isReindexMode ? '特別修正 ' : '';
+
+      if (sheaf === 'section_sheaf') {
+        const turns = (6.66 / mtK).toFixed(1);
+        turnText = `方向機轉移量 = 6.66 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發分段射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲6發分段射、向左 ${turns} 轉 3 發、準備好放！`;
+      } else if (sheaf === 'traverse_4') {
+        const turns = (2 / mtK).toFixed(1);
+        turnText = `方向機轉移量 = 2 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲4發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲4發橫射、向左 ${turns} 轉 么發、準備好放！`;
+      } else if (sheaf === 'traverse_6') {
+        const turns = (3.33 / mtK).toFixed(1);
+        turnText = `方向機轉移量 = 3.33 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
+      } else if (sheaf.includes('search')) {
+        turnText = `高低機轉移量 = (兩不同距離射角差) × 2 轉 = <strong>約 3 轉 (每轉 0.5 度)</strong>`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排 ${specialCorrPrefix}榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`;
+      } else {
+        turnText = `固定射擊模式：不需要轉動方向機/高低機手轉數。`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：全排集火效力射、目標編號 ${targetName}\n射擊口令：全排 ${specialCorrPrefix}榴彈、效力射準備好放！`;
+      }
+
+      document.getElementById('handwheelTurnsDisplay').innerHTML = turnText;
+      document.getElementById('commandOutputBox').innerText = cmdText;
+
+      const missionColor = getDistinctColor(effectFireHistory.length + 1);
+      effectFireHistory.push({
+        id: effectFireHistory.length + 1,
+        targetId: targetName,
+        sheafName: sheafName,
+        color: missionColor,
+        turnsText: turnText,
+        cmdText: cmdText,
+        guns: gunElements,
+        area: { centerX: newX, centerY: newY, width: areaW, depth: areaD, azOT: azOT }
+      });
+
+      renderEffectHistoryUI();
+      calculateAndDraw();
+    }
+
+    function renderEffectHistoryUI() {
+      const container = document.getElementById('effectHistoryContainer');
+      container.innerHTML = '';
+
+      if (effectFireHistory.length === 0) {
+        container.innerHTML = `<div style="font-size:0.75rem; color:#8395a7; text-align:center;">尚無效力射歷史紀錄</div>`;
+        return;
+      }
+
+      effectFireHistory.slice().reverse().forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'history-card';
+        card.style.borderColor = item.color;
+
+        let gunMatrixRows = '';
+        item.guns.forEach(g => {
+          gunMatrixRows += `<tr><td style="color:#ff4757; font-weight:bold;">${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
+        });
+
+        card.innerHTML = `
+          <div style="font-weight:bold; color:${item.color}; display:flex; justify-content:space-between;">
+            <span>任務 #${item.id} - 目標: ${item.targetId}</span>
+            <span>${item.sheafName}</span>
+          </div>
+          <table class="result-table" style="margin:6px 0;">
+            <thead><tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
+            <tbody>${gunMatrixRows}</tbody>
+          </table>
+          <div style="color:#e0e6ed;">${item.turnsText}</div>
+          <div style="margin-top:4px; font-family:monospace; color:#4cd137; white-space:pre-wrap;">${item.cmdText}</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function generatePoLangPDF() {
+      const canvasImg = canvas.toDataURL('image/png');
+
+      const band = document.getElementById('mgrsBand').value || 'R';
+      const sq = document.getElementById('mgrsSq').value || 'TK';
+      const opE = document.getElementById('opE8').value || '4999';
+      const opN = document.getElementById('opN8').value || '1962';
+      const opAlt = document.getElementById('opAlt').value || '100';
+
+      const opEAbs = (parseFloat(opE) || 4999) * 10;
+      const opNAbs = (parseFloat(opN) || 1962) * 10;
+
+      let gunsPositionTableRows = '';
+      globalGuns.forEach(g => {
+        const gE4 = Math.round((opEAbs + g.x) / 10).toString().padStart(4, '0');
+        const gN4 = Math.round((opNAbs + g.y) / 10).toString().padStart(4, '0');
+        gunsPositionTableRows += `<tr>
+          <td><b>${g.id} 砲</b></td>
+          <td>51${band} ${sq} ${gE4} ${gN4}</td>
+          <td>${g.alt}m</td>
+          <td>相對OP (X:${Math.round(g.x)}m, Y:${Math.round(g.y)}m)</td>
+        </tr>`;
+      });
+
+      const dispM2M1Text = document.getElementById('dispM2M1').innerText;
+      const dispM3M2Text = document.getElementById('dispM3M2').innerText;
+
+      let targetsListHtml = '';
+      globalTargets.forEach(t => {
+        const tE4 = Math.round((opEAbs + t.x) / 10).toString().padStart(4, '0');
+        const tN4 = Math.round((opNAbs + t.y) / 10).toString().padStart(4, '0');
+        targetsListHtml += `<li><b>目標 ${t.id}</b>: 51${band} ${sq} ${tE4} ${tN4} (標高: ${t.alt}m)</li>`;
+      });
+
+      let trialLogHtml = '';
+      if (correctionShots.length === 0) {
+        trialLogHtml = '<div style="font-size:12px; color:#666;">無試射修正紀錄</div>';
+      } else {
+        let rows = '';
+        correctionShots.forEach(shot => {
+          const m2Gun = globalGuns.find(g => g.id === '#2') || globalGuns[0];
+          const dx = shot.x - m2Gun.x, dy = shot.y - m2Gun.y;
+          const distCorr = Math.round(Math.hypot(dx, dy));
+          const azCorr = Math.round(radToMil(Math.atan2(dx, dy))).toString().padStart(4, '0');
+
+          rows += `<tr>
+            <td>第 ${shot.shotNum} 發</td>
+            <td>${shot.targetId}</td>
+            <td>${shot.cmdStr}</td>
+            <td><b>${azCorr} mil</b></td>
+            <td><b>${distCorr} m</b></td>
+          </tr>`;
+        });
+        trialLogHtml = `
+          <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
+            <thead>
+              <tr style="background:#f2f2f2;">
+                <th>發次</th><th>修正目標</th><th>觀測員修正口令</th><th>修正後砲目方向角 (#2砲)</th><th>修正後砲目距離 (#2砲)</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      }
+
+      let wingLogHtml = '';
+      if (wingShotRounds.length === 0) {
+        wingLogHtml = '<div style="font-size:12px; color:#666;">無翼次射修正紀錄</div>';
+      } else {
+        let rows = '';
+        wingShotRounds.forEach(round => {
+          const s1 = round.shots.find(s => s.gunId === '#1');
+          const s3 = round.shots.find(s => s.gunId === '#3');
+          const g1 = globalGuns.find(g => g.id === '#1');
+          const g3 = globalGuns.find(g => g.id === '#3');
+
+          let az1Str = '-', dist1Str = '-', az3Str = '-', dist3Str = '-';
+
+          if (s1 && g1) {
+            const dx = s1.x - g1.x, dy = s1.y - g1.y;
+            dist1Str = `${Math.round(Math.hypot(dx, dy))} m`;
+            az1Str = `${Math.round(radToMil(Math.atan2(dx, dy))).toString().padStart(4, '0')} mil`;
+          }
+          if (s3 && g3) {
+            const dx = s3.x - g3.x, dy = s3.y - g3.y;
+            dist3Str = `${Math.round(Math.hypot(dx, dy))} m`;
+            az3Str = `${Math.round(radToMil(Math.atan2(dx, dy))).toString().padStart(4, '0')} mil`;
+          }
+
+          rows += `<tr>
+            <td>第 ${round.roundNum} 輪 (${round.targetId})</td>
+            <td>${s1 ? s1.cmdStr : '-'}</td>
+            <td>${az1Str} / ${dist1Str}</td>
+            <td>${s3 ? s3.cmdStr : '-'}</td>
+            <td>${az3Str} / ${dist3Str}</td>
+          </tr>`;
+        });
+        wingLogHtml = `
+          <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
+            <thead>
+              <tr style="background:#f2f2f2;">
+                <th>輪次</th><th>#1砲 觀修口令</th><th>#1砲 修正後諸元</th><th>#3砲 觀修口令</th><th>#3砲 修正後諸元</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+      }
+
+      let calcStepsHtml = '';
+      if (correctionShots.length > 0) {
+        calcStepsHtml += `<h4>【#2砲 試射觀修向量推算步驟】</h4>`;
+        correctionShots.forEach(s => {
+          calcStepsHtml += `<div style="font-size:11px; margin-bottom:6px; background:#f8f9fa; padding:6px; border-left:3px solid #00a8ff;">
+            <b>發次 #${s.shotNum} [目標 ${s.targetId}]</b>：<br>
+            • 觀修輸入：口令 = ${s.cmdStr} (左右位移 W = ${s.shiftW}m, 距離位移 R = ${s.shiftR}m)<br>
+            • 觀目軸線 ∠OT = ${s.azOT} mil，極座標角度 Rad = (${s.azOT} / 6400) × 2π<br>
+            • 向量分解 ΔX (East) = R·sin(Rad) + W·cos(Rad) = ${s.shiftR}·sin(${s.azOT}) + ${s.shiftW}·cos(${s.azOT})<br>
+            • 向量分解 ΔY (North) = R·cos(Rad) - W·sin(Rad) = ${s.shiftR}·cos(${s.azOT}) - ${s.shiftW}·sin(${s.azOT})<br>
+            • 彈著點新座標 (對應OP)：X = ${Math.round(s.x)}m, Y = ${Math.round(s.y)}m
+          </div>`;
+        });
+      } else {
+        calcStepsHtml += `<div style="font-size:11px; color:#666;">尚無觀彈修正推算數據。</div>`;
+      }
+
+      let historyHtml = '';
+      effectFireHistory.forEach(item => {
+        let gunRows = '';
+        item.guns.forEach(g => {
+          gunRows += `<tr><td>${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
+        });
+        historyHtml += `
+          <div style="border:1px solid #333; padding:8px; margin-bottom:10px; page-break-inside:avoid;">
+            <div style="font-weight:bold;">任務 #${item.id} [${item.targetId}] - ${item.sheafName}</div>
+            <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
+              <thead><tr style="background:#f2f2f2;"><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
+              <tbody>${gunRows}</tbody>
+            </table>
+            <div style="font-size:11px;">${item.turnsText}</div>
+            <div style="font-family:monospace; font-size:11px; margin-top:4px; white-space:pre-wrap;">${item.cmdText}</div>
+          </div>
+        `;
+      });
+
+      const printWin = window.open('', '_blank');
+      if (!printWin) {
+        alert("⚠️ 系統彈出視窗被攔截，請允許彈出視窗後再試一次！");
+        return;
+      }
+
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>破浪戰術射擊指揮紀錄 (M10)</title>
+          <style>
+            body { font-family: sans-serif; padding: 15px; color: #000; background: #fff; }
+            h2 { margin: 0; font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+            h3 { margin-top: 15px; margin-bottom: 5px; font-size: 13px; border-bottom: 1.5px solid #000; padding-bottom: 3px; }
+            h4 { margin-top: 8px; margin-bottom: 4px; font-size: 12px; }
+            .meta-info { font-size: 11px; margin-bottom: 8px; }
+            .img-container { text-align: center; margin: 10px 0; }
+            .img-container img { max-width: 65%; border: 1px solid #000; }
+            ul { font-size: 11px; line-height: 1.4; padding-left: 20px; }
+            @media print {
+              body { padding: 0; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>破浪戰術射擊指揮紀錄 (M10)</h2>
+
+          <div class="meta-info">
+            <b>網格頭標:</b> 51${band} ${sq} | <b>產製時間:</b> ${new Date().toLocaleString()}<br>
+            <b>觀測所 (OP):</b> 51${band} ${sq} ${opE} ${opN} (標高: ${opAlt}m)
+          </div>
+
+          <h3>【砲陣地座標與橫向配置矩陣】</h3>
+          <table style="width:100%; border-collapse:collapse; margin:4px 0; font-size:11px; text-align:center;" border="1">
+            <thead>
+              <tr style="background:#f2f2f2;"><th>砲位</th><th>MGRS 座標</th><th>標高</th><th>對應 OP 位置</th></tr>
+            </thead>
+            <tbody>${gunsPositionTableRows}</tbody>
+          </table>
+          <div style="font-size:11px; margin-top:3px;">
+            <b>陣地配置距離：</b>#2對#1砲橫向距: ${dispM2M1Text} | #3對#2砲橫向距: ${dispM3M2Text}
+          </div>
+
+          <div class="img-container">
+            <img src="${canvasImg}" style="border-radius:50%;" />
+          </div>
+
+          <h3>【目標點座標清單 (MGRS 格式)】</h3>
+          <ul>${targetsListHtml}</ul>
+
+          <h3>【觀測員 #2砲試射修正記錄表】</h3>
+          ${trialLogHtml}
+
+          <h3>【觀測員 #1/#3砲翼次射觀修記錄表】</h3>
+          ${wingLogHtml}
+
+          <h3>【效力射歷史履歷與口令表】</h3>
+          ${historyHtml || '<div style="font-size:11px;">尚無效力射歷史紀錄</div>'}
+
+          <h3>【計算過程展示區 (M10圖板交叉驗證程序)】</h3>
+          ${calcStepsHtml}
+
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          <\/script>
+        </body>
+        </html>
+      `);
+      printWin.document.close();
+    }
+
+    initDefaultTargets();
+    calculateAndDraw();
+  </script>
+</body>
+</html>
+
