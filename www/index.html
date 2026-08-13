@@ -257,6 +257,7 @@
       font-size: 0.78rem;
       font-weight: bold;
       border-radius: 4px;
+      cursor: pointer;
     }
     .mode-btn.active {
       background-color: #e1b12c;
@@ -748,6 +749,24 @@
           </div>
         </div>
 
+        <!-- 需求一：加一個欄位「特別修正量」讓使用者交叉比對 -->
+        <div class="result-box" style="border-color: #ff9f43; margin-top: 6px;">
+          <div class="result-title" style="color:#ff9f43;">🎯 各砲當前特別修正量 ( Special Corrections )</div>
+          <table class="result-table">
+            <thead>
+              <tr>
+                <th>砲位</th>
+                <th>方向特別修正量 (ΔAz)</th>
+                <th>距離特別修正量 (ΔDist)</th>
+                <th>基準對齊點</th>
+              </tr>
+            </thead>
+            <tbody id="specialCorrectionTableBody">
+              <tr><td colspan="4" style="color:#8395a7;">計算中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
         <div class="input-group">
           <div class="section-title">2. 新目標標定方式</div>
           <div class="input-row">
@@ -837,10 +856,15 @@
         <button class="action-btn" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
 
         <div class="result-box" style="margin-top:8px;">
-          <div class="result-title">最新效力射產製諸元矩陣</div>
+          <div class="result-title" id="effectTableTitle">最新效力射產製諸元矩陣</div>
           <table class="result-table">
             <thead>
-              <tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>高程差 ΔH</th></tr>
+              <tr>
+                <th>砲位</th>
+                <th id="thEffectAzHeader">砲目方向諸元</th>
+                <th>砲目距離</th>
+                <th>高程差 ΔH</th>
+              </tr>
             </thead>
             <tbody id="effectFireTableBody">
               <tr><td colspan="4" style="color:#8395a7;">請點擊上方按鈕計算諸元</td></tr>
@@ -1212,6 +1236,7 @@
 
       populateTargetSelects();
       if (tab === 'tab2') updateOTDataDisplay();
+      if (tab === 'tab4') updateSpecialCorrectionDisplay();
       calculateAndDraw();
     }
 
@@ -1228,6 +1253,15 @@
       isReindexMode = reindex;
       document.getElementById('btnReindex').classList.toggle('active', reindex);
       document.getElementById('btnSpecialCorr').classList.toggle('active', !reindex);
+      
+      const thHeader = document.getElementById('thEffectAzHeader');
+      if (thHeader) {
+        thHeader.innerText = reindex ? "轉移角 Δθ (以新原向為0)" : "帶特別修正量方向角";
+      }
+      
+      if (currentTab === 'tab4') {
+        updateSpecialCorrectionDisplay();
+      }
     }
 
     function toggleDesignationMethod() {
@@ -1538,6 +1572,91 @@
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
     }
 
+    // 計算各砲針對基準點 (T1) 的特別修正量
+    function getGunSpecialCorrections() {
+      const baseTarget = globalTargets.find(t => t.id === 'T1') || globalTargets[0];
+      if (!baseTarget) return {};
+
+      let gunSpecialCorrections = {};
+      globalGuns.forEach(gun => {
+        const dxGrid = baseTarget.x - gun.x;
+        const dyGrid = baseTarget.y - gun.y;
+        const azGrid = radToMil(Math.atan2(dxGrid, dyGrid));
+        const distGrid = Math.hypot(dxGrid, dyGrid);
+
+        let actualHitX = baseTarget.x;
+        let actualHitY = baseTarget.y;
+
+        if (gun.id === '#2') {
+          if (correctionShots.length > 0) {
+            const lastShot = correctionShots[correctionShots.length - 1];
+            actualHitX = lastShot.x;
+            actualHitY = lastShot.y;
+          }
+        } else {
+          const sameTargetRounds = wingShotRounds.filter(r => r.targetId === baseTarget.id);
+          if (sameTargetRounds.length > 0) {
+            const lastRound = sameTargetRounds[sameTargetRounds.length - 1];
+            const prevShot = lastRound.shots.find(s => s.gunId === gun.id);
+            if (prevShot) {
+              actualHitX = prevShot.x;
+              actualHitY = prevShot.y;
+            }
+          }
+        }
+
+        const dxHit = actualHitX - gun.x;
+        const dyHit = actualHitY - gun.y;
+        const azHit = radToMil(Math.atan2(dxHit, dyHit));
+        const distHit = Math.hypot(dxHit, dyHit);
+
+        let deltaAz = azHit - azGrid;
+        if (deltaAz > 3200) deltaAz -= 6400;
+        if (deltaAz < -3200) deltaAz += 6400;
+
+        gunSpecialCorrections[gun.id] = {
+          deltaAz: deltaAz,
+          deltaDist: distHit - distGrid,
+          azHit: azHit,
+          azGrid: azGrid,
+          distHit: distHit,
+          distGrid: distGrid,
+          baseTargetId: baseTarget.id
+        };
+      });
+
+      return gunSpecialCorrections;
+    }
+
+    // 需求一功能實現：動態更新特別修正量表格
+    function updateSpecialCorrectionDisplay() {
+      const tbody = document.getElementById('specialCorrectionTableBody');
+      if (!tbody) return;
+
+      const corrs = getGunSpecialCorrections();
+      tbody.innerHTML = '';
+
+      if (Object.keys(corrs).length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#8395a7;">無資料</td></tr>';
+        return;
+      }
+
+      globalGuns.forEach(gun => {
+        const c = corrs[gun.id];
+        if (!c) return;
+        const azSign = c.deltaAz >= 0 ? '+' : '';
+        const distSign = c.deltaDist >= 0 ? '+' : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="font-weight:bold; color:#ff4757;">${gun.id}</td>
+          <td style="color:#4cd137; font-weight:bold;">${azSign}${Math.round(c.deltaAz)} mil</td>
+          <td style="color:#00d2d3; font-weight:bold;">${distSign}${Math.round(c.deltaDist)} m</td>
+          <td style="color:#e1b12c;">基點 ${c.baseTargetId}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
     function calculateAndDraw() {
       globalGuns = [];
       globalTargets = [];
@@ -1701,6 +1820,7 @@
       }
 
       if (currentTab === 'tab2') renderCorrectionResultTable();
+      if (currentTab === 'tab4') updateSpecialCorrectionDisplay();
       if (currentMainView === 'map') updateMapMarkers();
     }
 
@@ -1982,48 +2102,7 @@
         addNewTargetRow(targetName, e8Str, n8Str, newAlt);
       }
 
-      const baseTarget = globalTargets.find(t => t.id === 'T1') || globalTargets[0];
-      let gunSpecialCorrections = {};
-      
-      globalGuns.forEach(gun => {
-        const dxGrid = baseTarget.x - gun.x;
-        const dyGrid = baseTarget.y - gun.y;
-        const azGrid = radToMil(Math.atan2(dxGrid, dyGrid));
-        const distGrid = Math.hypot(dxGrid, dyGrid);
-
-        let actualHitX = baseTarget.x;
-        let actualHitY = baseTarget.y;
-
-        if (gun.id === '#2') {
-          if (correctionShots.length > 0) {
-            const lastShot = correctionShots[correctionShots.length - 1];
-            actualHitX = lastShot.x;
-            actualHitY = lastShot.y;
-          }
-        } else {
-          const sameTargetRounds = wingShotRounds.filter(r => r.targetId === baseTarget.id);
-          if (sameTargetRounds.length > 0) {
-            const lastRound = sameTargetRounds[sameTargetRounds.length - 1];
-            const prevShot = lastRound.shots.find(s => s.gunId === gun.id);
-            if (prevShot) {
-              actualHitX = prevShot.x;
-              actualHitY = prevShot.y;
-            }
-          }
-        }
-
-        const dxHit = actualHitX - gun.x;
-        const dyHit = actualHitY - gun.y;
-        const azHit = radToMil(Math.atan2(dxHit, dyHit));
-        const distHit = Math.hypot(dxHit, dyHit);
-
-        gunSpecialCorrections[gun.id] = {
-          deltaAz: azHit - azGrid,
-          deltaDist: distHit - distGrid,
-          azHit: azHit,
-          azGrid: azGrid
-        };
-      });
+      const gunSpecialCorrections = getGunSpecialCorrections();
 
       const sheafSelect = document.getElementById('sheafTypeSelect');
       const sheaf = sheafSelect.value;
@@ -2070,26 +2149,37 @@
         const newGridDist = Math.hypot(dxNew, dyNew);
         const deltaH = newAlt - gun.alt;
 
-        let finalAz = 0;
-        let finalDist = 0;
-        const corr = gunSpecialCorrections[gun.id];
+        const corr = gunSpecialCorrections[gun.id] || { deltaAz: 0, deltaDist: 0, azGrid: newGridAz };
+
+        let displayAzStr = "";
+        let finalDist = Math.round(newGridDist + corr.deltaDist);
 
         if (isReindexMode) {
-          const shiftAngle = newGridAz - corr.azGrid;
-          finalAz = (corr.azHit + shiftAngle + 6400) % 6400;
-          finalDist = newGridDist + corr.deltaDist;
+          // 重標原向：計算新目標對舊目標的轉移角 Δθ
+          let shiftAngle = newGridAz - corr.azGrid;
+          if (shiftAngle > 3200) shiftAngle -= 6400;
+          if (shiftAngle < -3200) shiftAngle += 6400;
+          
+          const dirSignStr = shiftAngle >= 0 ? "右" : "左";
+          displayAzStr = `轉移 ${dirSignStr} ${Math.abs(Math.round(shiftAngle))} mil`;
         } else {
-          finalAz = (newGridAz + corr.deltaAz + 6400) % 6400;
-          finalDist = newGridDist + corr.deltaDist;
+          // 不重標原向：幾何方位角直接帶入特別修正量 ΔAz
+          let absCorrAz = (newGridAz + corr.deltaAz + 6400) % 6400;
+          displayAzStr = `${Math.round(absCorrAz).toString().padStart(4, '0')} mil`;
         }
 
-        gunElements.push({ gunId: gun.id, az: Math.round(finalAz), dist: Math.round(finalDist), deltaH: deltaH });
+        gunElements.push({ 
+          gunId: gun.id, 
+          displayAz: displayAzStr, 
+          dist: finalDist, 
+          deltaH: deltaH 
+        });
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td style="font-weight:bold; color:#ff4757;">${gun.id}</td>
-          <td class="val-az">${Math.round(finalAz).toString().padStart(4, '0')}</td>
-          <td class="val-dist">${Math.round(finalDist)}m</td>
+          <td class="val-az">${displayAzStr}</td>
+          <td class="val-dist">${finalDist}m</td>
           <td class="val-alt">ΔH:${deltaH}m</td>
         `;
         tbody.appendChild(tr);
@@ -2112,7 +2202,7 @@
       } else if (sheaf === 'traverse_6') {
         const turns = (3.33 / mtK).toFixed(1);
         turnText = `方向機轉移量 = 3.33 ÷ (${mtK.toFixed(2)}) = <strong>向左 ${turns} 轉 (每轉15密位)</strong>`;
-        cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲6發橫射從${windFromRight ? '右' : '左'}放、目標編號 ${targetName}\n射擊口令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
+        cmdText = `一號前進觀測員射擊任務！\n組長命令：準備從${windFromRight ? '右' : '左'}放、全排 ${specialCorrPrefix}榴彈、各砲6發橫射、向左 ${turns} 轉 3 發、準備好放！`;
       } else if (sheaf.includes('search')) {
         turnText = `高低機轉移量 = (兩不同距離射角差) × 2 轉 = <strong>約 3 轉 (每轉 0.5 度)</strong>`;
         cmdText = `一號前進觀測員射擊任務！\n組長命令：各砲縱射向上(下)轉、目標編號 ${targetName}\n射擊口令：全排 ${specialCorrPrefix}榴彈、各砲縱射、高低機轉移 3 轉、準備好放！`;
@@ -2129,6 +2219,7 @@
         id: effectFireHistory.length + 1,
         targetId: targetName,
         sheafName: sheafName,
+        modeText: isReindexMode ? "重標原向" : "不重標原向 (帶特別修正量)",
         color: missionColor,
         turnsText: turnText,
         cmdText: cmdText,
@@ -2156,16 +2247,16 @@
 
         let gunMatrixRows = '';
         item.guns.forEach(g => {
-          gunMatrixRows += `<tr><td style="color:#ff4757; font-weight:bold;">${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
+          gunMatrixRows += `<tr><td style="color:#ff4757; font-weight:bold;">${g.gunId}</td><td>${g.displayAz}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
         });
 
         card.innerHTML = `
           <div style="font-weight:bold; color:${item.color}; display:flex; justify-content:space-between;">
-            <span>任務 #${item.id} - 目標: ${item.targetId}</span>
+            <span>任務 #${item.id} - 目標: ${item.targetId} (${item.modeText})</span>
             <span>${item.sheafName}</span>
           </div>
           <table class="result-table" style="margin:6px 0;">
-            <thead><tr><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
+            <thead><tr><th>砲位</th><th>砲目方向諸元</th><th>砲目距離</th><th>ΔH</th></tr></thead>
             <tbody>${gunMatrixRows}</tbody>
           </table>
           <div style="color:#e0e6ed;">${item.turnsText}</div>
@@ -2175,6 +2266,7 @@
       });
     }
 
+    // 需求三功能實現：在 PDF 計算過程展示區，展示重標與不重標分劃的求得過程
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
 
@@ -2282,34 +2374,42 @@
           </table>`;
       }
 
-      let calcStepsHtml = '';
-      if (correctionShots.length > 0) {
-        calcStepsHtml += `<h4>【#2砲 試射觀修向量推算步驟】</h4>`;
-        correctionShots.forEach(s => {
-          calcStepsHtml += `<div style="font-size:11px; margin-bottom:6px; background:#f8f9fa; padding:6px; border-left:3px solid #00a8ff;">
-            <b>發次 #${s.shotNum} [目標 ${s.targetId}]</b>：<br>
-            • 觀修輸入：口令 = ${s.cmdStr} (左右位移 W = ${s.shiftW}m, 距離位移 R = ${s.shiftR}m)<br>
-            • 觀目軸線 ∠OT = ${s.azOT} mil，極座標角度 Rad = (${s.azOT} / 6400) × 2π<br>
-            • 向量分解 ΔX (East) = R·sin(Rad) + W·cos(Rad) = ${s.shiftR}·sin(${s.azOT}) + ${s.shiftW}·cos(${s.azOT})<br>
-            • 向量分解 ΔY (North) = R·cos(Rad) - W·sin(Rad) = ${s.shiftR}·cos(${s.azOT}) - ${s.shiftW}·sin(${s.azOT})<br>
-            • 彈著點新座標 (對應OP)：X = ${Math.round(s.x)}m, Y = ${Math.round(s.y)}m
+      const corrs = getGunSpecialCorrections();
+      let calcStepsHtml = `<h4>【1. 各砲特別修正量 (Special Correction) 求解過程】</h4>`;
+      globalGuns.forEach(gun => {
+        const c = corrs[gun.id];
+        if (c) {
+          calcStepsHtml += `<div style="font-size:11px; margin-bottom:4px; background:#f8f9fa; padding:5px; border-left:3px solid #ff9f43;">
+            <b>${gun.id} 砲</b>：地圖純幾何方向 = ${Math.round(c.azGrid)} mil, 命中方向 = ${Math.round(c.azHit)} mil<br>
+            ➔ 方向特別修正量 (ΔAz) = ${Math.round(c.azHit)} - ${Math.round(c.azGrid)} = <b>${c.deltaAz >= 0 ? '+' : ''}${Math.round(c.deltaAz)} mil</b><br>
+            ➔ 距離特別修正量 (ΔDist) = ${Math.round(c.distHit)} - ${Math.round(c.distGrid)} = <b>${c.deltaDist >= 0 ? '+' : ''}${Math.round(c.deltaDist)} m</b>
           </div>`;
-        });
-      } else {
-        calcStepsHtml += `<div style="font-size:11px; color:#666;">尚無觀彈修正推算數據。</div>`;
-      }
+        }
+      });
+
+      calcStepsHtml += `<h4 style="margin-top:10px;">【2. 效力射雙軌模式演算機制對比】</h4>`;
+      calcStepsHtml += `<div style="font-size:11px; line-height:1.5; background:#edf2f7; padding:8px; border-radius:4px;">
+        <b>軌道 A：【重標分劃 / 重標原向】</b><br>
+        • <b>物理動作</b>：砲手在陣地將瞄準具分劃歸零於基準命中方向 Az<sub>hit</sub>。<br>
+        • <b>演算公式</b>：轉移角 Δθ = Az<sub>new_grid</sub> - Az<sub>base_grid</sub><br>
+        • <b>輸出諸元</b>：顯示相對轉移量（如「右轉移 120 mil」），砲手直接以此轉移角進行砲身轉向。<br><br>
+        <b>軌道 B：【不重標分劃 / 帶入特別修正量】</b><br>
+        • <b>物理動作</b>：砲手保持原定向基線與分劃不變。<br>
+        • <b>演算公式</b>：射擊絕對方位角 = Az<sub>new_grid</sub> + ΔAz<br>
+        • <b>輸出諸元</b>：顯示疊加特別修正量後的絕對方位角，砲手直接瞄準該方位分劃。
+      </div>`;
 
       let historyHtml = '';
       effectFireHistory.forEach(item => {
         let gunRows = '';
         item.guns.forEach(g => {
-          gunRows += `<tr><td>${g.gunId}</td><td>${g.az.toString().padStart(4, '0')}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
+          gunRows += `<tr><td>${g.gunId}</td><td>${g.displayAz}</td><td>${g.dist}m</td><td>ΔH:${g.deltaH}m</td></tr>`;
         });
         historyHtml += `
           <div style="border:1px solid #333; padding:8px; margin-bottom:10px; page-break-inside:avoid;">
-            <div style="font-weight:bold;">任務 #${item.id} [${item.targetId}] - ${item.sheafName}</div>
+            <div style="font-weight:bold;">任務 #${item.id} [${item.targetId}] - ${item.sheafName} (${item.modeText})</div>
             <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
-              <thead><tr style="background:#f2f2f2;"><th>砲位</th><th>砲目方向角</th><th>砲目距離</th><th>ΔH</th></tr></thead>
+              <thead><tr style="background:#f2f2f2;"><th>砲位</th><th>砲目方向諸元</th><th>砲目距離</th><th>ΔH</th></tr></thead>
               <tbody>${gunRows}</tbody>
             </table>
             <div style="font-size:11px;">${item.turnsText}</div>
