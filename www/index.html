@@ -374,6 +374,7 @@
     button.action-btn:active { opacity: 0.85; }
     button.danger-btn { background-color: #ff4757; color: #fff; }
     button.add-btn { background-color: #00a8ff; color: #fff; margin-top: 4px; }
+    button.save-btn { background-color: #9b59b6; color: #fff; font-size: 0.75rem; padding: 5px 8px; border: none; border-radius: 4px; cursor: pointer; }
 
     .result-box {
       background-color: #28313e;
@@ -448,6 +449,20 @@
   <div class="app-container">
     
     <div class="sidebar" id="sidebarContainer">
+      
+      <!-- 免連網存讀檔工具列 -->
+      <div class="input-group" style="background:#1e272e; border-color:#9b59b6; margin-bottom:4px; padding:6px 10px;">
+        <div class="input-row" style="margin:0;">
+          <label style="color:#a55eea; font-weight:bold;">💾 本地任務進度</label>
+          <div style="display:flex; gap:4px;">
+            <button class="save-btn" onclick="exportTaskFile()">匯出備份</button>
+            <button class="save-btn" style="background:#3498db;" onclick="document.getElementById('importFileInput').click()">載入任務</button>
+            <button class="save-btn" style="background:#e74c3c;" onclick="resetTaskData()">重置清空</button>
+            <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importTaskFile(event)">
+          </div>
+        </div>
+      </div>
+
       <div class="tab-header">
         <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">1.諸元圖解</button>
         <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">2.落彈修正</button>
@@ -494,14 +509,12 @@
 
       <!-- 1. 諸元圖解頁面 -->
       <div id="tab1Content">
-        <!-- 需求二：加入 UTM 座標切換按鈕 -->
         <div class="mode-switch" style="margin: 6px 0;">
           <button class="mode-btn active" id="btn10Grid" onclick="switchMode('grid10')">MGRS 10碼模式</button>
           <button class="mode-btn" id="btnUtm" onclick="switchMode('utm')">UTM 平面座標</button>
           <button class="mode-btn" id="btnPolar" onclick="switchMode('polar')">極座標模式</button>
         </div>
 
-        <!-- 需求一：MGRS 改為精準 10 碼座標 (5碼 / 5碼) -->
         <div id="grid10Inputs">
           <div class="input-group">
             <div class="section-title">MGRS 網格頭標</div>
@@ -535,13 +548,13 @@
           <div class="input-group">
             <div class="section-title">2. 砲陣地 MGRS 10碼與標高</div>
             <div class="input-row"><label>#1 砲:</label>
-              <div class="grid-input-row"><input type="text" id="m1E10" value="50090" maxlength="5" inputmode="numeric"><span>/</span><input type="text" id="m1N10" value="19290" maxlength="5" inputmode="numeric"><span>/</span><input type="number" id="m1Alt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="text" id="m1E10" value="50090" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()"><span>/</span><input type="text" id="m1N10" value="19290" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m1Alt" value="85" style="width:45px;" onchange="calculateAndDraw()"></div>
             </div>
             <div class="input-row"><label>#2 砲 (基準):</label>
-              <div class="grid-input-row"><input type="text" id="m2E10" value="50090" maxlength="5" inputmode="numeric"><span>/</span><input type="text" id="m2N10" value="19270" maxlength="5" inputmode="numeric"><span>/</span><input type="number" id="m2Alt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="text" id="m2E10" value="50090" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()"><span>/</span><input type="text" id="m2N10" value="19270" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m2Alt" value="85" style="width:45px;" onchange="calculateAndDraw()"></div>
             </div>
             <div class="input-row"><label>#3 砲:</label>
-              <div class="grid-input-row"><input type="text" id="m3E10" value="50060" maxlength="5" inputmode="numeric"><span>/</span><input type="text" id="m3N10" value="19280" maxlength="5" inputmode="numeric"><span>/</span><input type="number" id="m3Alt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="text" id="m3E10" value="50060" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()"><span>/</span><input type="text" id="m3N10" value="19280" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m3Alt" value="85" style="width:45px;" onchange="calculateAndDraw()"></div>
             </div>
           </div>
 
@@ -552,7 +565,6 @@
           </div>
         </div>
 
-        <!-- 需求二：新增 UTM 平面座標輸入介面 -->
         <div id="utmInputs" style="display: none;">
           <div class="input-group">
             <div class="section-title">UTM 座標區域名</div>
@@ -581,13 +593,13 @@
           <div class="input-group">
             <div class="section-title">2. 砲陣地 UTM 平面座標與標高</div>
             <div class="input-row"><label>#1 砲:</label>
-              <div class="grid-input-row"><input type="number" id="m1UtmE" value="250090" style="width:70px;"><span>/</span><input type="number" id="m1UtmN" value="2919290" style="width:75px;"><span>/</span><input type="number" id="m1UtmAlt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="number" id="m1UtmE" value="250090" style="width:70px;" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m1UtmN" value="2919290" style="width:75px;" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m1UtmAlt" value="85" style="width:45px;" onchange="calculateAndDraw()"></div>
             </div>
             <div class="input-row"><label>#2 砲 (基準):</label>
-              <div class="grid-input-row"><input type="number" id="m2UtmE" value="250090" style="width:70px;"><span>/</span><input type="number" id="m2UtmN" value="2919270" style="width:75px;"><span>/</span><input type="number" id="m2UtmAlt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="number" id="m2UtmE" value="250090" style="width:70px;" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m2UtmN" value="2919270" style="width:75px;" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m2UtmAlt" value="85" style="width:45px;" onchange="calculateAndDraw()"></div>
             </div>
             <div class="input-row"><label>#3 砲:</label>
-              <div class="grid-input-row"><input type="number" id="m3UtmE" value="250060" style="width:70px;"><span>/</span><input type="number" id="m3UtmN" value="2919280" style="width:75px;"><span>/</span><input type="number" id="m3UtmAlt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="number" id="m3UtmE" value="250060" style="width:70px;" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m3UtmN" value="2919280" style="width:75px;" onchange="calculateAndDraw()"><span>/</span><input type="number" id="m3UtmAlt" value="85" style="width:45px;" onchange="calculateAndDraw()"></div>
             </div>
           </div>
 
@@ -601,19 +613,18 @@
         <div id="polarInputs" style="display: none;">
           <div class="input-group">
             <div class="section-title">1. 當前 OP ➔ 目標 T1</div>
-            <div class="input-row"><label>觀目方位角 (密位):</label><input type="number" id="azT1" value="950" min="0" max="6400" inputmode="numeric"></div>
-            <div class="input-row"><label>觀目距離 (公尺):</label><input type="number" id="distT1" value="1200" min="0" max="10000" inputmode="numeric"></div>
+            <div class="input-row"><label>觀目方位角 (密位):</label><input type="number" id="azT1" value="950" min="0" max="6400" inputmode="numeric" onchange="calculateAndDraw()"></div>
+            <div class="input-row"><label>觀目距離 (公尺):</label><input type="number" id="distT1" value="1200" min="0" max="10000" inputmode="numeric" onchange="calculateAndDraw()"></div>
           </div>
           <div class="input-group">
             <div class="section-title">2. 當前 OP ➔ #1 砲陣地</div>
-            <div class="input-row"><label>觀砲方位角 (密位):</label><input type="number" id="azM1" value="4750" min="0" max="6400" inputmode="numeric"></div>
-            <div class="input-row"><label>觀砲距離 (公尺):</label><input type="number" id="distM1" value="600" min="0" max="10000" inputmode="numeric"></div>
+            <div class="input-row"><label>觀砲方位角 (密位):</label><input type="number" id="azM1" value="4750" min="0" max="6400" inputmode="numeric" onchange="calculateAndDraw()"></div>
+            <div class="input-row"><label>觀砲距離 (公尺):</label><input type="number" id="distM1" value="600" min="0" max="10000" inputmode="numeric" onchange="calculateAndDraw()"></div>
           </div>
         </div>
 
         <button class="action-btn" style="margin-bottom: 8px;" onclick="calculateAndDraw()">重新圖解標點</button>
 
-        <!-- 需求五：新增以#2對正T目標時，#1與#3砲之水平距離(垂直砲目線)與垂直距離(砲目線投影距離) -->
         <div class="result-box" style="border-color: #00d2d3;">
           <div class="result-title" style="color:#00d2d3;">砲陣地對正基準目標 T1 砲目線配置矩陣</div>
           <table class="result-table">
@@ -702,13 +713,11 @@
           </div>
         </div>
 
-        <!-- 需求三：將按鈕改為一次只刪除一組記錄 (popShot) -->
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
           <button class="action-btn" style="flex: 2;" onclick="addCorrectionShot()">下達落彈修正</button>
           <button class="action-btn danger-btn" style="flex: 1;" onclick="popCorrectionShot()">清除上一組彈著</button>
         </div>
 
-        <!-- 需求四：一併將輸入的方向修正量與距離修正量加入歷史紀錄與 PDF -->
         <div class="result-box">
           <div class="result-title">最新彈著點對正各砲諸元與觀修口令</div>
           <table class="result-table">
@@ -794,13 +803,11 @@
           </div>
         </div>
 
-        <!-- 需求三：一次只刪除一組翼次射紀錄 (popWingShot) -->
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
           <button class="action-btn" style="flex: 2;" onclick="addWingShots()">標繪翼次射彈著</button>
           <button class="action-btn danger-btn" style="flex: 1;" onclick="popWingShot()">清除上一組翼次彈</button>
         </div>
 
-        <!-- 需求四：翼次射歷史紀錄納入修正量與口令 -->
         <div class="result-box">
           <div class="result-title">翼次射觀修歷史紀錄</div>
           <table class="result-table">
@@ -884,7 +891,6 @@
             <div class="input-row"><label>目標標高 (m):</label><input type="number" id="polarNewAlt" value="50" inputmode="numeric"></div>
           </div>
 
-          <!-- 需求一：效力射 10碼座標 -->
           <div id="gridSection" style="display: none;">
             <div class="input-row">
               <label>新目標 10 碼 (E/N):</label>
@@ -932,7 +938,6 @@
           </div>
         </div>
 
-        <!-- 需求三：新增清除效力射按鈕，一次刪一組 -->
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
           <button class="action-btn" style="flex: 2;" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
           <button class="action-btn danger-btn" style="flex: 1;" onclick="popEffectFire()">清除上一組效力射</button>
@@ -1010,7 +1015,7 @@
 
     let currentMainView = 'sidebar'; 
     let currentTab = 'tab1';
-    let currentMode = 'grid10'; // 需求一：預設改為 grid10
+    let currentMode = 'grid10';
 
     let boardRotationMil = 0; 
     let contentZoomScale = 1.0; 
@@ -1063,7 +1068,6 @@
       return `hsl(${hue}, 90%, 60%)`;
     }
 
-    // 需求一：預設 10碼座標格式 (5位數/5位數)
     function initDefaultTargets() {
       const defaultTargetsData = [
         { id: 'T1', e: '49450', n: '20910', alt: 50 },
@@ -1092,7 +1096,6 @@
         container.appendChild(row);
       });
 
-      // 初始化 UTM 目標預設值
       const utmContainer = document.getElementById('utmTargetInputsContainer');
       utmContainer.innerHTML = '';
       defaultTargetsData.forEach((t, idx) => {
@@ -1213,7 +1216,6 @@
       mapMarkersGroup = L.layerGroup().addTo(map);
     }
 
-    // 需求一：解析 10 碼 MGRS 座標 (E5, N5) 轉換為 LatLng
     function parseMGRSToLatLng(e5Str, n5Str) {
       try {
         const band = document.getElementById('mgrsBand').value || 'R';
@@ -1367,7 +1369,6 @@
       calculateAndDraw();
     }
 
-    // 需求二：模式切換加入 UTM 平面座標模式
     function switchMode(mode) {
       currentMode = mode;
       document.getElementById('btn10Grid').classList.toggle('active', mode === 'grid10');
@@ -1650,18 +1651,18 @@
     }
 
     function drawTrialShotPoint(pos, label, color) {
-      const r = 5.5;
-      ctx.beginPath(); ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
+      const sz = 5.5;
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, sz, 0, 2 * Math.PI);
       ctx.fillStyle = color; ctx.fill();
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.2; ctx.stroke();
       
       ctx.beginPath();
-      ctx.moveTo(pos.x - r - 2, pos.y); ctx.lineTo(pos.x + r + 2, pos.y);
-      ctx.moveTo(pos.x, pos.y - r - 2); ctx.lineTo(pos.x, pos.y + r + 2);
+      ctx.moveTo(pos.x - sz - 2, pos.y); ctx.lineTo(pos.x + sz + 2, pos.y);
+      ctx.moveTo(pos.x, pos.y - sz - 2); ctx.lineTo(pos.x, pos.y + sz + 2);
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
 
       ctx.fillStyle = color; ctx.font = 'bold 10px sans-serif';
-      ctx.fillText(label, pos.x + r + 4, pos.y - r - 2);
+      ctx.fillText(label, pos.x + sz + 4, pos.y - sz - 2);
     }
 
     function drawWingShotPoint(pos, label, color) {
@@ -1790,7 +1791,6 @@
       globalGuns = [];
       globalTargets = [];
 
-      // 需求一、需求二：分別處理 10碼 MGRS、UTM 與 極座標模式
       if (currentMode === 'grid10') {
         const opE = parseFloat(document.getElementById('opE10').value) || 49990;
         const opN = parseFloat(document.getElementById('opN10').value) || 19620;
@@ -1851,34 +1851,46 @@
         baseAzimuthM2T1 = radToMil(Math.atan2(target1.x - gun2.x, target1.y - gun2.y));
       }
 
-      // 需求五：精準計算以 #2砲 對正 T1 時，#1與#3砲之水平距離(垂直砲目線)與垂直距離(砲目線投影)
-      if (gun1 && gun2 && gun3 && target1) {
-        const dx2t = target1.x - gun2.x, dy2t = target1.y - gun2.y;
+      if (gun2 && target1) {
+        const dx2t = target1.x - gun2.x;
+        const dy2t = target1.y - gun2.y;
         const dist2t = Math.hypot(dx2t, dy2t);
 
-        // 砲目線單位向量 (指向目標 T1)
-        const ux = dist2t > 0 ? dx2t / dist2t : 0;
-        const uy = dist2t > 0 ? dy2t / dist2t : 1;
+        if (dist2t > 0) {
+          const ux = dx2t / dist2t;
+          const uy = dy2t / dist2t;
+          const nx = -uy;
+          const ny = ux;
 
-        // 垂直砲目線單位向量 (指向右側)
-        const nx = -uy;
-        const ny = ux;
+          if (gun1) {
+            const v1x = gun1.x - gun2.x;
+            const v1y = gun1.y - gun2.y;
+            const horiz1 = v1x * nx + v1y * ny;
+            const vert1 = v1x * ux + v1y * uy;
+            document.getElementById('dispM2M1_H').innerText = `${Math.abs(horiz1).toFixed(1)} m (${horiz1 >= 0 ? '右側' : '左側'})`;
+            document.getElementById('dispM2M1_V').innerText = `${Math.abs(vert1).toFixed(1)} m (${vert1 >= 0 ? '前方' : '後方'})`;
+          } else {
+            document.getElementById('dispM2M1_H').innerText = '-';
+            document.getElementById('dispM2M1_V').innerText = '-';
+          }
 
-        // #1砲 對 #2砲 向量
-        const v1x = gun1.x - gun2.x, v1y = gun1.y - gun2.y;
-        const horiz1 = v1x * nx + v1y * ny; // 水平距離 (垂直砲目線)
-        const vert1 = v1x * ux + v1y * uy;   // 垂直距離 (砲目線投影)
-
-        // #3砲 對 #2砲 向量
-        const v3x = gun3.x - gun2.x, v3y = gun3.y - gun2.y;
-        const horiz3 = v3x * nx + v3y * ny; // 水平距離 (垂直砲目線)
-        const vert3 = v3x * ux + v3y * uy;   // 垂直距離 (砲目線投影)
-
-        document.getElementById('dispM2M1_H').innerText = `${Math.abs(horiz1).toFixed(1)} m (${horiz1 >= 0 ? '右側' : '左側'})`;
-        document.getElementById('dispM2M1_V').innerText = `${Math.abs(vert1).toFixed(1)} m (${vert1 >= 0 ? '前方' : '後方'})`;
-        
-        document.getElementById('dispM3M2_H').innerText = `${Math.abs(horiz3).toFixed(1)} m (${horiz3 >= 0 ? '右側' : '左側'})`;
-        document.getElementById('dispM3M2_V').innerText = `${Math.abs(vert3).toFixed(1)} m (${vert3 >= 0 ? '前方' : '後方'})`;
+          if (gun3) {
+            const v3x = gun3.x - gun2.x;
+            const v3y = gun3.y - gun2.y;
+            const horiz3 = v3x * nx + v3y * ny;
+            const vert3 = v3x * ux + v3y * uy;
+            document.getElementById('dispM3M2_H').innerText = `${Math.abs(horiz3).toFixed(1)} m (${horiz3 >= 0 ? '右側' : '左側'})`;
+            document.getElementById('dispM3M2_V').innerText = `${Math.abs(vert3).toFixed(1)} m (${vert3 >= 0 ? '前方' : '後方'})`;
+          } else {
+            document.getElementById('dispM3M2_H').innerText = '-';
+            document.getElementById('dispM3M2_V').innerText = '-';
+          }
+        } else {
+          document.getElementById('dispM2M1_H').innerText = '無目標連線';
+          document.getElementById('dispM2M1_V').innerText = '無目標連線';
+          document.getElementById('dispM3M2_H').innerText = '無目標連線';
+          document.getElementById('dispM3M2_V').innerText = '無目標連線';
+        }
       }
 
       let maxDist = 1200;
@@ -1989,6 +2001,9 @@
       if (currentTab === 'tab3') renderWingResultTable();
       if (currentTab === 'tab4') updateSpecialCorrectionDisplay();
       if (currentMainView === 'map') updateMapMarkers();
+
+      // 自動觸發內存儲存
+      autoSaveToLocalStorage();
     }
 
     function populateTargetSelects() {
@@ -2067,7 +2082,6 @@
       calculateAndDraw();
     }
 
-    // 需求三：落彈修正「清除彈著」改成按一次只清除一組記錄
     function popCorrectionShot() {
       if (correctionShots.length > 0) {
         correctionShots.pop();
@@ -2075,7 +2089,6 @@
       }
     }
 
-    // 需求四：將輸入的方向修正量與距離修正量納入表格
     function renderCorrectionResultTable() {
       const tbody = document.getElementById('corrResultTableBody');
       tbody.innerHTML = '';
@@ -2191,7 +2204,6 @@
       renderWingResultTable();
     }
 
-    // 需求三：翼次射「清除翼次彈」改成按一次只清除一組記錄
     function popWingShot() {
       if (wingShotRounds.length > 0) {
         wingShotRounds.pop();
@@ -2200,7 +2212,6 @@
       }
     }
 
-    // 需求四：翼次射歷史紀錄納入觀修口令
     function renderWingResultTable() {
       const tbody = document.getElementById('wingResultTableBody');
       tbody.innerHTML = '';
@@ -2411,7 +2422,6 @@
       calculateAndDraw();
     }
 
-    // 需求三：效力射「清除效力射」按鈕，一次只刪除一組記錄
     function popEffectFire() {
       if (effectFireHistory.length > 0) {
         effectFireHistory.pop();
@@ -2455,7 +2465,233 @@
       });
     }
 
-    // 需求一與需求四：PDF匯出功能更新（全面支援 10碼 MGRS、UTM 與 觀修口令/修正量）
+    // ==========================================
+    // 💾 本地免連網存讀檔與備份核心邏輯 (Local Storage & JSON)
+    // ==========================================
+
+    function getFullStateObject() {
+      const targets = [];
+      document.querySelectorAll('.target-input-row').forEach(row => {
+        targets.push({
+          id: row.dataset.id,
+          e: row.querySelector('.tE10').value,
+          n: row.querySelector('.tN10').value,
+          alt: row.querySelector('.tAlt').value
+        });
+      });
+
+      const utmTargets = [];
+      document.querySelectorAll('.utm-target-input-row').forEach(row => {
+        utmTargets.push({
+          id: row.dataset.id,
+          e: row.querySelector('.tUtmE').value,
+          n: row.querySelector('.tUtmN').value,
+          alt: row.querySelector('.tUtmAlt').value
+        });
+      });
+
+      return {
+        timestamp: new Date().toISOString(),
+        currentMode: currentMode,
+        boardRotationMil: boardRotationMil,
+        contentZoomScale: contentZoomScale,
+        panOffsetX: panOffsetX,
+        panOffsetY: panOffsetY,
+        isReindexMode: isReindexMode,
+        // 輸入框控制項
+        gridInputs: {
+          mgrsBand: document.getElementById('mgrsBand').value,
+          mgrsSq: document.getElementById('mgrsSq').value,
+          opE10: document.getElementById('opE10').value,
+          opN10: document.getElementById('opN10').value,
+          opAlt: document.getElementById('opAlt').value,
+          m1E10: document.getElementById('m1E10').value,
+          m1N10: document.getElementById('m1N10').value,
+          m1Alt: document.getElementById('m1Alt').value,
+          m2E10: document.getElementById('m2E10').value,
+          m2N10: document.getElementById('m2N10').value,
+          m2Alt: document.getElementById('m2Alt').value,
+          m3E10: document.getElementById('m3E10').value,
+          m3N10: document.getElementById('m3N10').value,
+          m3Alt: document.getElementById('m3Alt').value,
+          targets: targets
+        },
+        utmInputs: {
+          opUtmE: document.getElementById('opUtmE').value,
+          opUtmN: document.getElementById('opUtmN').value,
+          opUtmAlt: document.getElementById('opUtmAlt').value,
+          m1UtmE: document.getElementById('m1UtmE').value,
+          m1UtmN: document.getElementById('m1UtmN').value,
+          m1UtmAlt: document.getElementById('m1UtmAlt').value,
+          m2UtmE: document.getElementById('m2UtmE').value,
+          m2UtmN: document.getElementById('m2UtmN').value,
+          m2Alt: document.getElementById('m2UtmAlt').value,
+          m3UtmE: document.getElementById('m3UtmE').value,
+          m3UtmN: document.getElementById('m3UtmN').value,
+          m3UtmAlt: document.getElementById('m3UtmAlt').value,
+          utmTargets: utmTargets
+        },
+        polarInputs: {
+          azT1: document.getElementById('azT1').value,
+          distT1: document.getElementById('distT1').value,
+          azM1: document.getElementById('azM1').value,
+          distM1: document.getElementById('distM1').value
+        },
+        // 戰術歷史紀錄
+        correctionShots: correctionShots,
+        wingShotRounds: wingShotRounds,
+        effectFireHistory: effectFireHistory
+      };
+    }
+
+    function autoSaveToLocalStorage() {
+      try {
+        const state = getFullStateObject();
+        localStorage.setItem('m10_fdc_auto_save', JSON.stringify(state));
+      } catch (e) {
+        console.error('AutoSave failed:', e);
+      }
+    }
+
+    function loadStateObject(state) {
+      if (!state) return;
+
+      boardRotationMil = state.boardRotationMil || 0;
+      contentZoomScale = state.contentZoomScale || 1.0;
+      panOffsetX = state.panOffsetX || 0;
+      panOffsetY = state.panOffsetY || 0;
+      isReindexMode = state.isReindexMode !== undefined ? state.isReindexMode : true;
+
+      updateRotationUI();
+      updateZoomUI();
+      setReindexMode(isReindexMode);
+
+      if (state.gridInputs) {
+        const g = state.gridInputs;
+        if (g.mgrsBand) document.getElementById('mgrsBand').value = g.mgrsBand;
+        if (g.mgrsSq) document.getElementById('mgrsSq').value = g.mgrsSq;
+        if (g.opE10) document.getElementById('opE10').value = g.opE10;
+        if (g.opN10) document.getElementById('opN10').value = g.opN10;
+        if (g.opAlt) document.getElementById('opAlt').value = g.opAlt;
+
+        if (g.m1E10) document.getElementById('m1E10').value = g.m1E10;
+        if (g.m1N10) document.getElementById('m1N10').value = g.m1N10;
+        if (g.m1Alt) document.getElementById('m1Alt').value = g.m1Alt;
+        if (g.m2E10) document.getElementById('m2E10').value = g.m2E10;
+        if (g.m2N10) document.getElementById('m2N10').value = g.m2N10;
+        if (g.m2Alt) document.getElementById('m2Alt').value = g.m2Alt;
+        if (g.m3E10) document.getElementById('m3E10').value = g.m3E10;
+        if (g.m3N10) document.getElementById('m3N10').value = g.m3N10;
+        if (g.m3Alt) document.getElementById('m3Alt').value = g.m3Alt;
+
+        if (g.targets && Array.isArray(g.targets)) {
+          const container = document.getElementById('targetInputsContainer');
+          container.innerHTML = '';
+          g.targets.forEach(t => addNewTargetRow(t.id, t.e, t.n, t.alt));
+        }
+      }
+
+      if (state.utmInputs) {
+        const u = state.utmInputs;
+        if (u.opUtmE) document.getElementById('opUtmE').value = u.opUtmE;
+        if (u.opUtmN) document.getElementById('opUtmN').value = u.opUtmN;
+        if (u.opUtmAlt) document.getElementById('opUtmAlt').value = u.opUtmAlt;
+
+        if (u.m1UtmE) document.getElementById('m1UtmE').value = u.m1UtmE;
+        if (u.m1UtmN) document.getElementById('m1UtmN').value = u.m1UtmN;
+        if (u.m1UtmAlt) document.getElementById('m1UtmAlt').value = u.m1UtmAlt;
+        if (u.m2UtmE) document.getElementById('m2UtmE').value = u.m2UtmE;
+        if (u.m2UtmN) document.getElementById('m2UtmN').value = u.m2UtmN;
+        if (u.m2UtmAlt) document.getElementById('m2UtmAlt').value = u.m2UtmAlt;
+        if (u.m3UtmE) document.getElementById('m3UtmE').value = u.m3UtmE;
+        if (u.m3UtmN) document.getElementById('m3UtmN').value = u.m3UtmN;
+        if (u.m3UtmAlt) document.getElementById('m3UtmAlt').value = u.m3UtmAlt;
+
+        if (u.utmTargets && Array.isArray(u.utmTargets)) {
+          const container = document.getElementById('utmTargetInputsContainer');
+          container.innerHTML = '';
+          u.utmTargets.forEach(t => addNewUtmTargetRow(t.id, t.e, t.n, t.alt));
+        }
+      }
+
+      if (state.polarInputs) {
+        const p = state.polarInputs;
+        if (p.azT1) document.getElementById('azT1').value = p.azT1;
+        if (p.distT1) document.getElementById('distT1').value = p.distT1;
+        if (p.azM1) document.getElementById('azM1').value = p.azM1;
+        if (p.distM1) document.getElementById('distM1').value = p.distM1;
+      }
+
+      correctionShots = state.correctionShots || [];
+      wingShotRounds = state.wingShotRounds || [];
+      effectFireHistory = state.effectFireHistory || [];
+
+      if (state.currentMode) switchMode(state.currentMode);
+
+      renderEffectHistoryUI();
+      calculateAndDraw();
+    }
+
+    function tryRestoreAutoSave() {
+      const saved = localStorage.getItem('m10_fdc_auto_save');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          loadStateObject(parsed);
+        } catch (e) {
+          initDefaultTargets();
+        }
+      } else {
+        initDefaultTargets();
+      }
+    }
+
+    function exportTaskFile() {
+      const state = getFullStateObject();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `M10_Task_${dateStr}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importTaskFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const state = JSON.parse(e.target.result);
+          loadStateObject(state);
+          alert('✅ 任務進度已成功載入！');
+        } catch (err) {
+          alert('❌ 檔案格式錯誤，無法載入任務！');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function resetTaskData() {
+      if (confirm("⚠️ 確定要重置並清空所有輸入座標與射擊歷史紀錄嗎？")) {
+        localStorage.removeItem('m10_fdc_auto_save');
+        correctionShots = [];
+        wingShotRounds = [];
+        effectFireHistory = [];
+        boardRotationMil = 0;
+        contentZoomScale = 1.0;
+        panOffsetX = 0; panOffsetY = 0;
+        updateRotationUI(); updateZoomUI();
+        initDefaultTargets();
+        renderEffectHistoryUI();
+        calculateAndDraw();
+      }
+    }
+
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
 
@@ -2492,7 +2728,6 @@
         targetsListHtml += `<li><b>目標 ${t.id}</b>: 51${band} ${sq} ${tE10} ${tN10} (標高: ${t.alt}m)</li>`;
       });
 
-      // 需求四：PDF 展示試射修正口令與金額修正細節
       let trialLogHtml = '';
       if (correctionShots.length === 0) {
         trialLogHtml = '<div style="font-size:12px; color:#666;">無試射修正紀錄</div>';
@@ -2687,8 +2922,8 @@
       printWin.document.close();
     }
 
-    initDefaultTargets();
-    calculateAndDraw();
+    // 啟動時自動還原上一次進度
+    tryRestoreAutoSave();
   </script>
 </body>
 </html>
