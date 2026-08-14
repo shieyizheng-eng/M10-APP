@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>M10 射擊圖板與指揮系統</title>
+  <title>M10 射擊圖板與指揮系統 (10碼精準版)</title>
   
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
@@ -77,8 +77,8 @@
     @media (min-width: 850px) {
       .app-container { flex-direction: row; }
       .sidebar {
-        width: 460px !important;
-        min-width: 460px !important;
+        width: 480px !important;
+        min-width: 480px !important;
         height: 100% !important;
         border-right: 1px solid #2d3d36;
         display: flex !important;
@@ -254,7 +254,7 @@
       border: none;
       background-color: transparent;
       color: #8395a7;
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       font-weight: bold;
       border-radius: 4px;
       cursor: pointer;
@@ -304,7 +304,7 @@
       align-items: center;
     }
     .grid-input-row input {
-      width: 55px;
+      width: 65px;
       text-align: center;
     }
 
@@ -494,12 +494,15 @@
 
       <!-- 1. 諸元圖解頁面 -->
       <div id="tab1Content">
+        <!-- 需求二：加入 UTM 座標切換按鈕 -->
         <div class="mode-switch" style="margin: 6px 0;">
-          <button class="mode-btn active" id="btn8Grid" onclick="switchMode('grid8')">MGRS 8碼模式</button>
+          <button class="mode-btn active" id="btn10Grid" onclick="switchMode('grid10')">MGRS 10碼模式</button>
+          <button class="mode-btn" id="btnUtm" onclick="switchMode('utm')">UTM 平面座標</button>
           <button class="mode-btn" id="btnPolar" onclick="switchMode('polar')">極座標模式</button>
         </div>
 
-        <div id="grid8Inputs">
+        <!-- 需求一：MGRS 改為精準 10 碼座標 (5碼 / 5碼) -->
+        <div id="grid10Inputs">
           <div class="input-group">
             <div class="section-title">MGRS 網格頭標</div>
             <div class="input-row">
@@ -516,13 +519,13 @@
           </div>
 
           <div class="input-group">
-            <div class="section-title">1. 觀測員 (OP) MGRS 8碼與標高</div>
+            <div class="section-title">1. 觀測員 (OP) MGRS 10碼與標高</div>
             <div class="input-row">
               <label>OP 觀測所:</label>
               <div class="grid-input-row">
-                <input type="text" id="opE8" value="4999" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+                <input type="text" id="opE10" value="49990" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()">
                 <span>/</span>
-                <input type="text" id="opN8" value="1962" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+                <input type="text" id="opN10" value="19620" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()">
                 <span>/</span>
                 <input type="number" id="opAlt" value="100" style="width:45px;" onchange="calculateAndDraw()">
               </div>
@@ -530,22 +533,68 @@
           </div>
 
           <div class="input-group">
-            <div class="section-title">2. 砲陣地 MGRS 8碼與標高</div>
+            <div class="section-title">2. 砲陣地 MGRS 10碼與標高</div>
             <div class="input-row"><label>#1 砲:</label>
-              <div class="grid-input-row"><input type="text" id="m1E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m1N8" value="1929" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m1Alt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="text" id="m1E10" value="50090" maxlength="5" inputmode="numeric"><span>/</span><input type="text" id="m1N10" value="19290" maxlength="5" inputmode="numeric"><span>/</span><input type="number" id="m1Alt" value="85" style="width:45px;"></div>
             </div>
             <div class="input-row"><label>#2 砲 (基準):</label>
-              <div class="grid-input-row"><input type="text" id="m2E8" value="5009" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m2N8" value="1927" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m2Alt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="text" id="m2E10" value="50090" maxlength="5" inputmode="numeric"><span>/</span><input type="text" id="m2N10" value="19270" maxlength="5" inputmode="numeric"><span>/</span><input type="number" id="m2Alt" value="85" style="width:45px;"></div>
             </div>
             <div class="input-row"><label>#3 砲:</label>
-              <div class="grid-input-row"><input type="text" id="m3E8" value="5006" maxlength="4" inputmode="numeric"><span>/</span><input type="text" id="m3N8" value="1928" maxlength="4" inputmode="numeric"><span>/</span><input type="number" id="m3Alt" value="85" style="width:45px;"></div>
+              <div class="grid-input-row"><input type="text" id="m3E10" value="50060" maxlength="5" inputmode="numeric"><span>/</span><input type="text" id="m3N10" value="19280" maxlength="5" inputmode="numeric"><span>/</span><input type="number" id="m3Alt" value="85" style="width:45px;"></div>
             </div>
           </div>
 
           <div class="input-group">
-            <div class="section-title">3. 動態目標點清單 (E / N / 標高)</div>
+            <div class="section-title">3. 動態目標點清單 (E 10碼 / N 10碼 / 標高)</div>
             <div id="targetInputsContainer"></div>
             <button class="action-btn add-btn" onclick="addNewTargetRow()">+ 動態新增目標</button>
+          </div>
+        </div>
+
+        <!-- 需求二：新增 UTM 平面座標輸入介面 -->
+        <div id="utmInputs" style="display: none;">
+          <div class="input-group">
+            <div class="section-title">UTM 座標區域名</div>
+            <div class="input-row">
+              <label>Zone / Hemisphere:</label>
+              <div class="grid-input-row">
+                <input type="text" id="utmZone" value="51N" readonly style="width:55px; text-align:center; background:#121619;">
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="section-title">1. OP UTM 平面座標與標高</div>
+            <div class="input-row">
+              <label>OP 觀測所:</label>
+              <div class="grid-input-row">
+                <input type="number" id="opUtmE" value="249990" style="width:70px;" onchange="calculateAndDraw()">
+                <span>/</span>
+                <input type="number" id="opUtmN" value="2919620" style="width:75px;" onchange="calculateAndDraw()">
+                <span>/</span>
+                <input type="number" id="opUtmAlt" value="100" style="width:45px;" onchange="calculateAndDraw()">
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="section-title">2. 砲陣地 UTM 平面座標與標高</div>
+            <div class="input-row"><label>#1 砲:</label>
+              <div class="grid-input-row"><input type="number" id="m1UtmE" value="250090" style="width:70px;"><span>/</span><input type="number" id="m1UtmN" value="2919290" style="width:75px;"><span>/</span><input type="number" id="m1UtmAlt" value="85" style="width:45px;"></div>
+            </div>
+            <div class="input-row"><label>#2 砲 (基準):</label>
+              <div class="grid-input-row"><input type="number" id="m2UtmE" value="250090" style="width:70px;"><span>/</span><input type="number" id="m2UtmN" value="2919270" style="width:75px;"><span>/</span><input type="number" id="m2UtmAlt" value="85" style="width:45px;"></div>
+            </div>
+            <div class="input-row"><label>#3 砲:</label>
+              <div class="grid-input-row"><input type="number" id="m3UtmE" value="250060" style="width:70px;"><span>/</span><input type="number" id="m3UtmN" value="2919280" style="width:75px;"><span>/</span><input type="number" id="m3UtmAlt" value="85" style="width:45px;"></div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <div class="section-title">3. 動態目標點清單 (UTM E / N / 標高)</div>
+            <div id="utmTargetInputsContainer"></div>
+            <button class="action-btn add-btn" onclick="addNewUtmTargetRow()">+ 動態新增 UTM 目標</button>
           </div>
         </div>
 
@@ -564,15 +613,27 @@
 
         <button class="action-btn" style="margin-bottom: 8px;" onclick="calculateAndDraw()">重新圖解標點</button>
 
+        <!-- 需求五：新增以#2對正T目標時，#1與#3砲之水平距離(垂直砲目線)與垂直距離(砲目線投影距離) -->
         <div class="result-box" style="border-color: #00d2d3;">
-          <div class="result-title" style="color:#00d2d3;">砲陣地橫向配置距離矩陣</div>
+          <div class="result-title" style="color:#00d2d3;">砲陣地對正基準目標 T1 砲目線配置矩陣</div>
           <table class="result-table">
-            <thead><tr><th>項目</th><th>#2 對 #1 砲橫向距</th><th>#3 對 #2 砲橫向距</th></tr></thead>
+            <thead>
+              <tr>
+                <th>項目</th>
+                <th>#1 砲相對 #2 砲</th>
+                <th>#3 砲相對 #2 砲</th>
+              </tr>
+            </thead>
             <tbody>
               <tr>
-                <td style="color:#ff4757; font-weight:bold;">垂直配置差</td>
-                <td id="dispM2M1" class="val-dist">0.0 m</td>
-                <td id="dispM3M2" class="val-dist">0.0 m</td>
+                <td style="color:#ff4757; font-weight:bold;">水平距離 (垂直砲目線)</td>
+                <td id="dispM2M1_H" class="val-dist">0.0 m</td>
+                <td id="dispM3M2_H" class="val-dist">0.0 m</td>
+              </tr>
+              <tr>
+                <td style="color:#e1b12c; font-weight:bold;">垂直距離 (砲目線投影)</td>
+                <td id="dispM2M1_V" class="val-dist">0.0 m</td>
+                <td id="dispM3M2_V" class="val-dist">0.0 m</td>
               </tr>
             </tbody>
           </table>
@@ -641,15 +702,25 @@
           </div>
         </div>
 
+        <!-- 需求三：將按鈕改為一次只刪除一組記錄 (popShot) -->
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
           <button class="action-btn" style="flex: 2;" onclick="addCorrectionShot()">下達落彈修正</button>
-          <button class="action-btn danger-btn" style="flex: 1;" onclick="resetCorrections()">清除彈著</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="popCorrectionShot()">清除上一組彈著</button>
         </div>
 
+        <!-- 需求四：一併將輸入的方向修正量與距離修正量加入歷史紀錄與 PDF -->
         <div class="result-box">
-          <div class="result-title">最新彈著點對正各砲諸元</div>
+          <div class="result-title">最新彈著點對正各砲諸元與觀修口令</div>
           <table class="result-table">
-            <thead><tr><th>彈著輪次 \ 砲位</th><th>#1 砲</th><th>#2 砲</th><th>#3 砲</th></tr></thead>
+            <thead>
+              <tr>
+                <th>彈著輪次</th>
+                <th>觀修口令 (方向/距離)</th>
+                <th>#1 砲 諸元</th>
+                <th>#2 砲 諸元</th>
+                <th>#3 砲 諸元</th>
+              </tr>
+            </thead>
             <tbody id="corrResultTableBody"></tbody>
           </table>
         </div>
@@ -723,15 +794,23 @@
           </div>
         </div>
 
+        <!-- 需求三：一次只刪除一組翼次射紀錄 (popWingShot) -->
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
           <button class="action-btn" style="flex: 2;" onclick="addWingShots()">標繪翼次射彈著</button>
-          <button class="action-btn danger-btn" style="flex: 1;" onclick="resetWingShots()">清除翼次彈</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="popWingShot()">清除上一組翼次彈</button>
         </div>
 
+        <!-- 需求四：翼次射歷史紀錄納入修正量與口令 -->
         <div class="result-box">
-          <div class="result-title">翼次射觀修歷史記錄</div>
+          <div class="result-title">翼次射觀修歷史紀錄</div>
           <table class="result-table">
-            <thead><tr><th>輪次 \ 砲位</th><th>#1 砲 諸元</th><th>#3 砲 諸元</th></tr></thead>
+            <thead>
+              <tr>
+                <th>輪次 \ 砲位</th>
+                <th>#1 砲 觀修口令與諸元</th>
+                <th>#3 砲 觀修口令與諸元</th>
+              </tr>
+            </thead>
             <tbody id="wingResultTableBody">
               <tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>
             </tbody>
@@ -749,7 +828,6 @@
           </div>
         </div>
 
-        <!-- 需求一：加一個欄位「特別修正量」讓使用者交叉比對 -->
         <div class="result-box" style="border-color: #ff9f43; margin-top: 6px;">
           <div class="result-title" style="color:#ff9f43;">🎯 各砲當前特別修正量 ( Special Corrections )</div>
           <table class="result-table">
@@ -806,13 +884,14 @@
             <div class="input-row"><label>目標標高 (m):</label><input type="number" id="polarNewAlt" value="50" inputmode="numeric"></div>
           </div>
 
+          <!-- 需求一：效力射 10碼座標 -->
           <div id="gridSection" style="display: none;">
             <div class="input-row">
-              <label>新目標 8 碼 (E/N):</label>
+              <label>新目標 10 碼 (E/N):</label>
               <div class="grid-input-row">
-                <input type="text" id="gridNewE" value="4940" maxlength="4" inputmode="numeric">
+                <input type="text" id="gridNewE" value="49400" maxlength="5" inputmode="numeric">
                 <span>/</span>
-                <input type="text" id="gridNewN" value="2000" maxlength="4" inputmode="numeric">
+                <input type="text" id="gridNewN" value="20000" maxlength="5" inputmode="numeric">
               </div>
             </div>
             <div class="input-row"><label>目標標高 (m):</label><input type="number" id="gridNewAlt" value="50" inputmode="numeric"></div>
@@ -853,7 +932,11 @@
           </div>
         </div>
 
-        <button class="action-btn" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
+        <!-- 需求三：新增清除效力射按鈕，一次刪一組 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <button class="action-btn" style="flex: 2;" onclick="executeEffectFire()">標定新目標並產製效力射諸元</button>
+          <button class="action-btn danger-btn" style="flex: 1;" onclick="popEffectFire()">清除上一組效力射</button>
+        </div>
 
         <div class="result-box" style="margin-top:8px;">
           <div class="result-title" id="effectTableTitle">最新效力射產製諸元矩陣</div>
@@ -927,7 +1010,7 @@
 
     let currentMainView = 'sidebar'; 
     let currentTab = 'tab1';
-    let currentMode = 'grid8';
+    let currentMode = 'grid10'; // 需求一：預設改為 grid10
 
     let boardRotationMil = 0; 
     let contentZoomScale = 1.0; 
@@ -980,12 +1063,13 @@
       return `hsl(${hue}, 90%, 60%)`;
     }
 
+    // 需求一：預設 10碼座標格式 (5位數/5位數)
     function initDefaultTargets() {
       const defaultTargetsData = [
-        { id: 'T1', e: '4945', n: '2091', alt: 50 },
-        { id: 'T2', e: '4945', n: '2081', alt: 50 },
-        { id: 'T3', e: '4946', n: '2071', alt: 50 },
-        { id: 'T4', e: '4946', n: '2061', alt: 50 }
+        { id: 'T1', e: '49450', n: '20910', alt: 50 },
+        { id: 'T2', e: '49450', n: '20810', alt: 50 },
+        { id: 'T3', e: '49460', n: '20710', alt: 50 },
+        { id: 'T4', e: '49460', n: '20610', alt: 50 }
       ];
 
       const container = document.getElementById('targetInputsContainer');
@@ -998,18 +1082,38 @@
         row.innerHTML = `
           <label>目標 ${t.id}:</label>
           <div class="grid-input-row">
-            <input type="text" class="tE8" value="${t.e}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+            <input type="text" class="tE10" value="${t.e}" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()">
             <span>/</span>
-            <input type="text" class="tN8" value="${t.n}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+            <input type="text" class="tN10" value="${t.n}" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()">
             <span>/</span>
             <input type="number" class="tAlt" value="${t.alt}" style="width:45px;" onchange="calculateAndDraw()">
           </div>
         `;
         container.appendChild(row);
       });
+
+      // 初始化 UTM 目標預設值
+      const utmContainer = document.getElementById('utmTargetInputsContainer');
+      utmContainer.innerHTML = '';
+      defaultTargetsData.forEach((t, idx) => {
+        const row = document.createElement('div');
+        row.className = 'input-row utm-target-input-row';
+        row.dataset.id = t.id;
+        row.innerHTML = `
+          <label>目標 ${t.id}:</label>
+          <div class="grid-input-row">
+            <input type="number" class="tUtmE" value="${249450 + idx*10}" style="width:70px;" onchange="calculateAndDraw()">
+            <span>/</span>
+            <input type="number" class="tUtmN" value="${2920910 - idx*100}" style="width:75px;" onchange="calculateAndDraw()">
+            <span>/</span>
+            <input type="number" class="tUtmAlt" value="${t.alt}" style="width:45px;" onchange="calculateAndDraw()">
+          </div>
+        `;
+        utmContainer.appendChild(row);
+      });
     }
 
-    function addNewTargetRow(targetIdStr = null, defaultE = '4940', defaultN = '2000', defaultAlt = 50) {
+    function addNewTargetRow(targetIdStr = null, defaultE = '49400', defaultN = '20000', defaultAlt = 50) {
       const container = document.getElementById('targetInputsContainer');
       const count = container.querySelectorAll('.target-input-row').length + 1;
       const tid = targetIdStr || `T${count}`;
@@ -1020,11 +1124,33 @@
       row.innerHTML = `
         <label>目標 ${tid}:</label>
         <div class="grid-input-row">
-          <input type="text" class="tE8" value="${defaultE}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+          <input type="text" class="tE10" value="${defaultE}" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()">
           <span>/</span>
-          <input type="text" class="tN8" value="${defaultN}" maxlength="4" inputmode="numeric" onchange="calculateAndDraw()">
+          <input type="text" class="tN10" value="${defaultN}" maxlength="5" inputmode="numeric" onchange="calculateAndDraw()">
           <span>/</span>
           <input type="number" class="tAlt" value="${defaultAlt}" style="width:45px;" onchange="calculateAndDraw()">
+        </div>
+      `;
+      container.appendChild(row);
+      calculateAndDraw();
+    }
+
+    function addNewUtmTargetRow(targetIdStr = null, defaultE = 249400, defaultN = 2920000, defaultAlt = 50) {
+      const container = document.getElementById('utmTargetInputsContainer');
+      const count = container.querySelectorAll('.utm-target-input-row').length + 1;
+      const tid = targetIdStr || `T${count}`;
+
+      const row = document.createElement('div');
+      row.className = 'input-row utm-target-input-row';
+      row.dataset.id = tid;
+      row.innerHTML = `
+        <label>目標 ${tid}:</label>
+        <div class="grid-input-row">
+          <input type="number" class="tUtmE" value="${defaultE}" style="width:70px;" onchange="calculateAndDraw()">
+          <span>/</span>
+          <input type="number" class="tUtmN" value="${defaultN}" style="width:75px;" onchange="calculateAndDraw()">
+          <span>/</span>
+          <input type="number" class="tUtmAlt" value="${defaultAlt}" style="width:45px;" onchange="calculateAndDraw()">
         </div>
       `;
       container.appendChild(row);
@@ -1087,14 +1213,15 @@
       mapMarkersGroup = L.layerGroup().addTo(map);
     }
 
-    function parseMGRSToLatLng(e4Str, n4Str) {
+    // 需求一：解析 10 碼 MGRS 座標 (E5, N5) 轉換為 LatLng
+    function parseMGRSToLatLng(e5Str, n5Str) {
       try {
         const band = document.getElementById('mgrsBand').value || 'R';
         const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
-        const e4 = e4Str.toString().trim().padStart(4, '0');
-        const n4 = n4Str.toString().trim().padStart(4, '0');
+        const e5 = e5Str.toString().trim().padStart(5, '0');
+        const n5 = n5Str.toString().trim().padStart(5, '0');
         
-        const fullMgrs = `51${band}${sq}${e4}${n4}`;
+        const fullMgrs = `51${band}${sq}${e5}${n5}`;
         const point = mgrs.toPoint(fullMgrs);
         return [point[1], point[0]];
       } catch (e) { return null; }
@@ -1112,44 +1239,44 @@
       const band = document.getElementById('mgrsBand').value || 'R';
       const sq = document.getElementById('mgrsSq').value.trim().toUpperCase() || 'TK';
 
-      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
-      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+      const opE = parseFloat(document.getElementById('opE10').value) || 49990;
+      const opN = parseFloat(document.getElementById('opN10').value) || 19620;
 
-      const opLatLng = parseMGRSToLatLng(document.getElementById('opE8').value, document.getElementById('opN8').value);
+      const opLatLng = parseMGRSToLatLng(document.getElementById('opE10').value, document.getElementById('opN10').value);
       if (opLatLng) {
         const svg = `<svg width="18" height="18" viewBox="0 0 100 100"><polygon points="50,10 90,90 10,90" fill="#ff9f43" stroke="#ffffff" stroke-width="6"/></svg>`;
         const icon = L.divIcon({ html: svg, className: '', iconSize: [18, 18], iconAnchor: [9, 9] });
 
         L.marker(opLatLng, { icon: icon })
-          .bindPopup(`<b>觀測員 (OP)</b><br>MGRS: 51${band} ${sq} ${document.getElementById('opE8').value} ${document.getElementById('opN8').value}<br>標高: ${document.getElementById('opAlt').value}m`)
+          .bindPopup(`<b>觀測員 (OP)</b><br>MGRS: 51${band} ${sq} ${document.getElementById('opE10').value} ${document.getElementById('opN10').value}<br>標高: ${document.getElementById('opAlt').value}m`)
           .addTo(mapMarkersGroup);
       }
 
       const gunColors = ['#ff4757', '#e1b12c', '#4cd137'];
       globalGuns.forEach((g, idx) => {
-        const gE4 = Math.round((opE + g.x) / 10);
-        const gN4 = Math.round((opN + g.y) / 10);
-        const gLatLng = parseMGRSToLatLng(gE4, gN4);
+        const gE5 = Math.round(opE + g.x);
+        const gN5 = Math.round(opN + g.y);
+        const gLatLng = parseMGRSToLatLng(gE5, gN5);
         if (gLatLng) {
           L.circle(gLatLng, {
             radius: 3547, color: gunColors[idx % 3], fillColor: gunColors[idx % 3], fillOpacity: 0.05, weight: 1.5, dashArray: '4, 4'
           }).addTo(mapMarkersGroup);
 
           L.circleMarker(gLatLng, { radius: 6, color: gunColors[idx % 3], fillColor: gunColors[idx % 3], fillOpacity: 0.9 })
-            .bindPopup(`<b>砲位 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE4} ${gN4}<br>標高: ${g.alt}m`)
+            .bindPopup(`<b>砲位 ${g.id}</b><br>MGRS: 51${band} ${sq} ${gE5} ${gN5}<br>標高: ${g.alt}m`)
             .addTo(mapMarkersGroup);
         }
       });
 
       if (showTarget) {
         globalTargets.forEach((t, idx) => {
-          const tE4 = Math.round((opE + t.x) / 10);
-          const tN4 = Math.round((opN + t.y) / 10);
-          const tLatLng = parseMGRSToLatLng(tE4, tN4);
+          const tE5 = Math.round(opE + t.x);
+          const tN5 = Math.round(opN + t.y);
+          const tLatLng = parseMGRSToLatLng(tE5, tN5);
           if (tLatLng) {
             const color = getDistinctColor(idx);
             L.circleMarker(tLatLng, { radius: 6, color: color, fillColor: color, fillOpacity: 0.9 })
-              .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE4} ${tN4}<br>標高: ${t.alt}m`)
+              .bindPopup(`<b>目標 ${t.id}</b><br>MGRS: 51${band} ${sq} ${tE5} ${tN5}<br>標高: ${t.alt}m`)
               .addTo(mapMarkersGroup);
           }
         });
@@ -1157,12 +1284,12 @@
 
       if (showTrial) {
         correctionShots.forEach(shot => {
-          const sE4 = Math.round((opE + shot.x) / 10);
-          const sN4 = Math.round((opN + shot.y) / 10);
-          const sLatLng = parseMGRSToLatLng(sE4, sN4);
+          const sE5 = Math.round(opE + shot.x);
+          const sN5 = Math.round(opN + shot.y);
+          const sLatLng = parseMGRSToLatLng(sE5, sN5);
           if (sLatLng) {
             L.circleMarker(sLatLng, { radius: 5, color: shot.color, fillColor: shot.color, fillOpacity: 0.8 })
-              .bindPopup(`<b>#2砲 試射第 ${shot.shotNum} 發 (${shot.targetId})</b>`)
+              .bindPopup(`<b>#2砲 試射第 ${shot.shotNum} 發 (${shot.targetId})</b><br>口令: ${shot.cmdStr}`)
               .addTo(mapMarkersGroup);
           }
         });
@@ -1171,12 +1298,12 @@
       if (showWing) {
         wingShotRounds.forEach(round => {
           round.shots.forEach(shot => {
-            const wE4 = Math.round((opE + shot.x) / 10);
-            const wN4 = Math.round((opN + shot.y) / 10);
-            const wLatLng = parseMGRSToLatLng(wE4, wN4);
+            const wE5 = Math.round(opE + shot.x);
+            const wN5 = Math.round(opN + shot.y);
+            const wLatLng = parseMGRSToLatLng(wE5, wN5);
             if (wLatLng) {
               L.circleMarker(wLatLng, { radius: 5, color: shot.color, fillColor: shot.color, fillOpacity: 0.8 })
-                .bindPopup(`<b>翼次射 ${shot.gunId} 砲 (第 ${round.roundNum} 輪)</b>`)
+                .bindPopup(`<b>翼次射 ${shot.gunId} 砲 (第 ${round.roundNum} 輪)</b><br>口令: ${shot.cmdStr}`)
                 .addTo(mapMarkersGroup);
           }
           });
@@ -1204,9 +1331,9 @@
             const rotX = pt.x * Math.cos(radOT) - pt.y * Math.sin(radOT);
             const rotY = pt.x * Math.sin(radOT) + pt.y * Math.cos(radOT);
 
-            const cornerE4 = Math.round((opE + area.centerX + rotX) / 10);
-            const cornerN4 = Math.round((opN + area.centerY + rotY) / 10);
-            const latLng = parseMGRSToLatLng(cornerE4, cornerN4);
+            const cornerE5 = Math.round(opE + area.centerX + rotX);
+            const cornerN5 = Math.round(opN + area.centerY + rotY);
+            const latLng = parseMGRSToLatLng(cornerE5, cornerN5);
             if (latLng) polygonLatLngs.push(latLng);
           });
 
@@ -1240,11 +1367,15 @@
       calculateAndDraw();
     }
 
+    // 需求二：模式切換加入 UTM 平面座標模式
     function switchMode(mode) {
       currentMode = mode;
-      document.getElementById('btn8Grid').classList.toggle('active', mode === 'grid8');
+      document.getElementById('btn10Grid').classList.toggle('active', mode === 'grid10');
+      document.getElementById('btnUtm').classList.toggle('active', mode === 'utm');
       document.getElementById('btnPolar').classList.toggle('active', mode === 'polar');
-      document.getElementById('grid8Inputs').style.display = (mode === 'grid8') ? 'block' : 'none';
+      
+      document.getElementById('grid10Inputs').style.display = (mode === 'grid10') ? 'block' : 'none';
+      document.getElementById('utmInputs').style.display = (mode === 'utm') ? 'block' : 'none';
       document.getElementById('polarInputs').style.display = (mode === 'polar') ? 'block' : 'none';
       calculateAndDraw();
     }
@@ -1572,7 +1703,6 @@
       ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
     }
 
-    // 計算各砲針對基準點 (T1) 的特別修正量
     function getGunSpecialCorrections() {
       const baseTarget = globalTargets.find(t => t.id === 'T1') || globalTargets[0];
       if (!baseTarget) return {};
@@ -1628,7 +1758,6 @@
       return gunSpecialCorrections;
     }
 
-    // 需求一功能實現：動態更新特別修正量表格
     function updateSpecialCorrectionDisplay() {
       const tbody = document.getElementById('specialCorrectionTableBody');
       if (!tbody) return;
@@ -1661,15 +1790,15 @@
       globalGuns = [];
       globalTargets = [];
 
-      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
-      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
-
-      if (currentMode === 'grid8') {
+      // 需求一、需求二：分別處理 10碼 MGRS、UTM 與 極座標模式
+      if (currentMode === 'grid10') {
+        const opE = parseFloat(document.getElementById('opE10').value) || 49990;
+        const opN = parseFloat(document.getElementById('opN10').value) || 19620;
         const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
 
         for (let i = 1; i <= 3; i++) {
-          const mE = getVal(`m${i}E8`) * 10;
-          const mN = getVal(`m${i}N8`) * 10;
+          const mE = getVal(`m${i}E10`);
+          const mN = getVal(`m${i}N10`);
           const mAlt = getVal(`m${i}Alt`);
           globalGuns.push({ id: `#${i}`, x: mE - opE, y: mN - opN, alt: mAlt });
         }
@@ -1677,9 +1806,29 @@
         const targetRows = document.querySelectorAll('.target-input-row');
         targetRows.forEach(row => {
           const tid = row.dataset.id;
-          const tE = (parseFloat(row.querySelector('.tE8').value) || 0) * 10;
-          const tN = (parseFloat(row.querySelector('.tN8').value) || 0) * 10;
+          const tE = parseFloat(row.querySelector('.tE10').value) || 0;
+          const tN = parseFloat(row.querySelector('.tN10').value) || 0;
           const tAlt = parseFloat(row.querySelector('.tAlt').value) || 0;
+          globalTargets.push({ id: tid, x: tE - opE, y: tN - opN, alt: tAlt });
+        });
+      } else if (currentMode === 'utm') {
+        const opE = parseFloat(document.getElementById('opUtmE').value) || 249990;
+        const opN = parseFloat(document.getElementById('opUtmN').value) || 2919620;
+        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+        for (let i = 1; i <= 3; i++) {
+          const mE = getVal(`m${i}UtmE`);
+          const mN = getVal(`m${i}UtmN`);
+          const mAlt = getVal(`m${i}UtmAlt`);
+          globalGuns.push({ id: `#${i}`, x: mE - opE, y: mN - opN, alt: mAlt });
+        }
+
+        const targetRows = document.querySelectorAll('.utm-target-input-row');
+        targetRows.forEach(row => {
+          const tid = row.dataset.id;
+          const tE = parseFloat(row.querySelector('.tUtmE').value) || 0;
+          const tN = parseFloat(row.querySelector('.tUtmN').value) || 0;
+          const tAlt = parseFloat(row.querySelector('.tUtmAlt').value) || 0;
           globalTargets.push({ id: tid, x: tE - opE, y: tN - opN, alt: tAlt });
         });
       } else {
@@ -1702,17 +1851,34 @@
         baseAzimuthM2T1 = radToMil(Math.atan2(target1.x - gun2.x, target1.y - gun2.y));
       }
 
+      // 需求五：精準計算以 #2砲 對正 T1 時，#1與#3砲之水平距離(垂直砲目線)與垂直距離(砲目線投影)
       if (gun1 && gun2 && gun3 && target1) {
         const dx2t = target1.x - gun2.x, dy2t = target1.y - gun2.y;
         const dist2t = Math.hypot(dx2t, dy2t);
-        const ux = dist2t > 0 ? dx2t / dist2t : 0, uy = dist2t > 0 ? dy2t / dist2t : 1;
-        const nx = -uy, ny = ux;
 
-        const v1 = (gun1.x - gun2.x) * nx + (gun1.y - gun2.y) * ny;
-        const v3 = (gun3.x - gun2.x) * nx + (gun3.y - gun2.y) * ny;
+        // 砲目線單位向量 (指向目標 T1)
+        const ux = dist2t > 0 ? dx2t / dist2t : 0;
+        const uy = dist2t > 0 ? dy2t / dist2t : 1;
 
-        document.getElementById('dispM2M1').innerText = `${Math.abs(v1).toFixed(1)} m (${v1 > 0 ? '右側' : '左側'})`;
-        document.getElementById('dispM3M2').innerText = `${Math.abs(v3).toFixed(1)} m (${v3 > 0 ? '右側' : '左側'})`;
+        // 垂直砲目線單位向量 (指向右側)
+        const nx = -uy;
+        const ny = ux;
+
+        // #1砲 對 #2砲 向量
+        const v1x = gun1.x - gun2.x, v1y = gun1.y - gun2.y;
+        const horiz1 = v1x * nx + v1y * ny; // 水平距離 (垂直砲目線)
+        const vert1 = v1x * ux + v1y * uy;   // 垂直距離 (砲目線投影)
+
+        // #3砲 對 #2砲 向量
+        const v3x = gun3.x - gun2.x, v3y = gun3.y - gun2.y;
+        const horiz3 = v3x * nx + v3y * ny; // 水平距離 (垂直砲目線)
+        const vert3 = v3x * ux + v3y * uy;   // 垂直距離 (砲目線投影)
+
+        document.getElementById('dispM2M1_H').innerText = `${Math.abs(horiz1).toFixed(1)} m (${horiz1 >= 0 ? '右側' : '左側'})`;
+        document.getElementById('dispM2M1_V').innerText = `${Math.abs(vert1).toFixed(1)} m (${vert1 >= 0 ? '前方' : '後方'})`;
+        
+        document.getElementById('dispM3M2_H').innerText = `${Math.abs(horiz3).toFixed(1)} m (${horiz3 >= 0 ? '右側' : '左側'})`;
+        document.getElementById('dispM3M2_V').innerText = `${Math.abs(vert3).toFixed(1)} m (${vert3 >= 0 ? '前方' : '後方'})`;
       }
 
       let maxDist = 1200;
@@ -1820,6 +1986,7 @@
       }
 
       if (currentTab === 'tab2') renderCorrectionResultTable();
+      if (currentTab === 'tab3') renderWingResultTable();
       if (currentTab === 'tab4') updateSpecialCorrectionDisplay();
       if (currentMainView === 'map') updateMapMarkers();
     }
@@ -1900,18 +2067,28 @@
       calculateAndDraw();
     }
 
-    function resetCorrections() { correctionShots = []; calculateAndDraw(); }
+    // 需求三：落彈修正「清除彈著」改成按一次只清除一組記錄
+    function popCorrectionShot() {
+      if (correctionShots.length > 0) {
+        correctionShots.pop();
+        calculateAndDraw();
+      }
+    }
 
+    // 需求四：將輸入的方向修正量與距離修正量納入表格
     function renderCorrectionResultTable() {
       const tbody = document.getElementById('corrResultTableBody');
       tbody.innerHTML = '';
       if (correctionShots.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color:#8395a7;">尚未下達落彈修正口令</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#8395a7;">尚未下達落彈修正口令</td></tr>`;
         return;
       }
       correctionShots.forEach(shot => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td style="font-weight:bold; color:${shot.color};">第 ${shot.shotNum} 發 (${shot.targetId})</td>`;
+        tr.innerHTML = `
+          <td style="font-weight:bold; color:${shot.color};">第 ${shot.shotNum} 發 (${shot.targetId})</td>
+          <td style="color:#e1b12c; font-weight:bold;">${shot.cmdStr}</td>
+        `;
         globalGuns.forEach(gun => {
           const dx = shot.x - gun.x, dy = shot.y - gun.y;
           const dist = Math.hypot(dx, dy), az = radToMil(Math.atan2(dx, dy)), relMil = getRelativeMil(az);
@@ -2014,12 +2191,16 @@
       renderWingResultTable();
     }
 
-    function resetWingShots() {
-      wingShotRounds = [];
-      calculateAndDraw();
-      document.getElementById('wingResultTableBody').innerHTML = `<tr><td colspan="3" style="color:#8395a7;">尚未標繪翼次射彈著</td></tr>`;
+    // 需求三：翼次射「清除翼次彈」改成按一次只清除一組記錄
+    function popWingShot() {
+      if (wingShotRounds.length > 0) {
+        wingShotRounds.pop();
+        calculateAndDraw();
+        renderWingResultTable();
+      }
     }
 
+    // 需求四：翼次射歷史紀錄納入觀修口令
     function renderWingResultTable() {
       const tbody = document.getElementById('wingResultTableBody');
       tbody.innerHTML = '';
@@ -2038,6 +2219,7 @@
             const dx = shot.x - gun.x, dy = shot.y - gun.y;
             const dist = Math.hypot(dx, dy), az = radToMil(Math.atan2(dx, dy)), relMil = getRelativeMil(az);
             html += `<td>
+              <div style="color:#e1b12c; font-weight:bold; margin-bottom:2px;">口令: ${shot.cmdStr}</div>
               <span class="val-az">${Math.round(az).toString().padStart(4, '0')}</span> / <span class="val-rel">[${relMil.toString().padStart(4, '0')}]</span><br>
               <span class="val-dist">${Math.round(dist)}m</span>
             </td>`;
@@ -2056,8 +2238,8 @@
       const targetName = document.getElementById('newTargetName').value.trim() || `T${globalTargets.length + 1}`;
       
       let newX = 0, newY = 0, newAlt = 50, azOT = 0;
-      const opE = (parseFloat(document.getElementById('opE8').value) || 4999) * 10;
-      const opN = (parseFloat(document.getElementById('opN8').value) || 1962) * 10;
+      const opE = (parseFloat(document.getElementById('opE10').value) || 49990);
+      const opN = (parseFloat(document.getElementById('opN10').value) || 19620);
 
       if (method === 'known') {
         const baseId = document.getElementById('knownPointSelect').value;
@@ -2085,8 +2267,8 @@
         newX = distOT * Math.sin(radOT);
         newY = distOT * Math.cos(radOT);
       } else if (method === 'grid') {
-        const gE = (parseFloat(document.getElementById('gridNewE').value) || 0) * 10;
-        const gN = (parseFloat(document.getElementById('gridNewN').value) || 0) * 10;
+        const gE = parseFloat(document.getElementById('gridNewE').value) || 0;
+        const gN = parseFloat(document.getElementById('gridNewN').value) || 0;
         newAlt = parseFloat(document.getElementById('gridNewAlt').value) || 50;
 
         newX = gE - opE;
@@ -2094,12 +2276,12 @@
         azOT = radToMil(Math.atan2(newX, newY));
       }
 
-      const e8Str = Math.round((opE + newX) / 10).toString().padStart(4, '0');
-      const n8Str = Math.round((opN + newY) / 10).toString().padStart(4, '0');
+      const e10Str = Math.round(opE + newX).toString().padStart(5, '0');
+      const n10Str = Math.round(opN + newY).toString().padStart(5, '0');
       
       let existingTarget = globalTargets.find(t => t.id === targetName);
       if (!existingTarget) {
-        addNewTargetRow(targetName, e8Str, n8Str, newAlt);
+        addNewTargetRow(targetName, e10Str, n10Str, newAlt);
       }
 
       const gunSpecialCorrections = getGunSpecialCorrections();
@@ -2155,7 +2337,6 @@
         let finalDist = Math.round(newGridDist + corr.deltaDist);
 
         if (isReindexMode) {
-          // 重標原向：計算新目標對舊目標的轉移角 Δθ
           let shiftAngle = newGridAz - corr.azGrid;
           if (shiftAngle > 3200) shiftAngle -= 6400;
           if (shiftAngle < -3200) shiftAngle += 6400;
@@ -2163,7 +2344,6 @@
           const dirSignStr = shiftAngle >= 0 ? "右" : "左";
           displayAzStr = `轉移 ${dirSignStr} ${Math.abs(Math.round(shiftAngle))} mil`;
         } else {
-          // 不重標原向：幾何方位角直接帶入特別修正量 ΔAz
           let absCorrAz = (newGridAz + corr.deltaAz + 6400) % 6400;
           displayAzStr = `${Math.round(absCorrAz).toString().padStart(4, '0')} mil`;
         }
@@ -2231,6 +2411,15 @@
       calculateAndDraw();
     }
 
+    // 需求三：效力射「清除效力射」按鈕，一次只刪除一組記錄
+    function popEffectFire() {
+      if (effectFireHistory.length > 0) {
+        effectFireHistory.pop();
+        renderEffectHistoryUI();
+        calculateAndDraw();
+      }
+    }
+
     function renderEffectHistoryUI() {
       const container = document.getElementById('effectHistoryContainer');
       container.innerHTML = '';
@@ -2259,48 +2448,51 @@
             <thead><tr><th>砲位</th><th>砲目方向諸元</th><th>砲目距離</th><th>ΔH</th></tr></thead>
             <tbody>${gunMatrixRows}</tbody>
           </table>
-          <div style="color:#e0e6ed;">${item.turnsText}</div>
+          <div style="color:#e0e0ed;">${item.turnsText}</div>
           <div style="margin-top:4px; font-family:monospace; color:#4cd137; white-space:pre-wrap;">${item.cmdText}</div>
         `;
         container.appendChild(card);
       });
     }
 
-    // 需求三功能實現：在 PDF 計算過程展示區，展示重標與不重標分劃的求得過程
+    // 需求一與需求四：PDF匯出功能更新（全面支援 10碼 MGRS、UTM 與 觀修口令/修正量）
     function generatePoLangPDF() {
       const canvasImg = canvas.toDataURL('image/png');
 
       const band = document.getElementById('mgrsBand').value || 'R';
       const sq = document.getElementById('mgrsSq').value || 'TK';
-      const opE = document.getElementById('opE8').value || '4999';
-      const opN = document.getElementById('opN8').value || '1962';
+      const opE10 = document.getElementById('opE10').value || '49990';
+      const opN10 = document.getElementById('opN10').value || '19620';
       const opAlt = document.getElementById('opAlt').value || '100';
 
-      const opEAbs = (parseFloat(opE) || 4999) * 10;
-      const opNAbs = (parseFloat(opN) || 1962) * 10;
+      const opEAbs = parseFloat(opE10) || 49990;
+      const opNAbs = parseFloat(opN10) || 19620;
 
       let gunsPositionTableRows = '';
       globalGuns.forEach(g => {
-        const gE4 = Math.round((opEAbs + g.x) / 10).toString().padStart(4, '0');
-        const gN4 = Math.round((opNAbs + g.y) / 10).toString().padStart(4, '0');
+        const gE10 = Math.round(opEAbs + g.x).toString().padStart(5, '0');
+        const gN10 = Math.round(opNAbs + g.y).toString().padStart(5, '0');
         gunsPositionTableRows += `<tr>
           <td><b>${g.id} 砲</b></td>
-          <td>51${band} ${sq} ${gE4} ${gN4}</td>
+          <td>51${band} ${sq} ${gE10} ${gN10}</td>
           <td>${g.alt}m</td>
           <td>相對OP (X:${Math.round(g.x)}m, Y:${Math.round(g.y)}m)</td>
         </tr>`;
       });
 
-      const dispM2M1Text = document.getElementById('dispM2M1').innerText;
-      const dispM3M2Text = document.getElementById('dispM3M2').innerText;
+      const dispM2M1_H_Text = document.getElementById('dispM2M1_H').innerText;
+      const dispM2M1_V_Text = document.getElementById('dispM2M1_V').innerText;
+      const dispM3M2_H_Text = document.getElementById('dispM3M2_H').innerText;
+      const dispM3M2_V_Text = document.getElementById('dispM3M2_V').innerText;
 
       let targetsListHtml = '';
       globalTargets.forEach(t => {
-        const tE4 = Math.round((opEAbs + t.x) / 10).toString().padStart(4, '0');
-        const tN4 = Math.round((opNAbs + t.y) / 10).toString().padStart(4, '0');
-        targetsListHtml += `<li><b>目標 ${t.id}</b>: 51${band} ${sq} ${tE4} ${tN4} (標高: ${t.alt}m)</li>`;
+        const tE10 = Math.round(opEAbs + t.x).toString().padStart(5, '0');
+        const tN10 = Math.round(opNAbs + t.y).toString().padStart(5, '0');
+        targetsListHtml += `<li><b>目標 ${t.id}</b>: 51${band} ${sq} ${tE10} ${tN10} (標高: ${t.alt}m)</li>`;
       });
 
+      // 需求四：PDF 展示試射修正口令與金額修正細節
       let trialLogHtml = '';
       if (correctionShots.length === 0) {
         trialLogHtml = '<div style="font-size:12px; color:#666;">無試射修正紀錄</div>';
@@ -2315,7 +2507,7 @@
           rows += `<tr>
             <td>第 ${shot.shotNum} 發</td>
             <td>${shot.targetId}</td>
-            <td>${shot.cmdStr}</td>
+            <td><b>${shot.cmdStr}</b></td>
             <td><b>${azCorr} mil</b></td>
             <td><b>${distCorr} m</b></td>
           </tr>`;
@@ -2324,7 +2516,7 @@
           <table style="width:100%; border-collapse:collapse; margin:5px 0; font-size:12px; text-align:center;" border="1">
             <thead>
               <tr style="background:#f2f2f2;">
-                <th>發次</th><th>修正目標</th><th>觀測員修正口令</th><th>修正後砲目方向角 (#2砲)</th><th>修正後砲目距離 (#2砲)</th>
+                <th>發次</th><th>修正目標</th><th>觀測員修正口令 (方向/距離修正量)</th><th>修正後砲目方向角 (#2砲)</th><th>修正後砲目距離 (#2砲)</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -2428,7 +2620,7 @@
         <!DOCTYPE html>
         <html>
         <head>
-          <title>破浪戰術射擊指揮紀錄 (M10)</title>
+          <title>破浪戰術射擊指揮紀錄 (M10 10碼精準版)</title>
           <style>
             body { font-family: sans-serif; padding: 15px; color: #000; background: #fff; }
             h2 { margin: 0; font-size: 20px; font-weight: bold; margin-bottom: 8px; }
@@ -2445,29 +2637,31 @@
           </style>
         </head>
         <body>
-          <h2>破浪戰術射擊指揮紀錄 (M10)</h2>
+          <h2>破浪戰術射擊指揮紀錄 (M10 10碼精準版)</h2>
 
           <div class="meta-info">
             <b>網格頭標:</b> 51${band} ${sq} | <b>產製時間:</b> ${new Date().toLocaleString()}<br>
-            <b>觀測所 (OP):</b> 51${band} ${sq} ${opE} ${opN} (標高: ${opAlt}m)
+            <b>觀測所 (OP):</b> 51${band} ${sq} ${opE10} ${opN10} (標高: ${opAlt}m)
           </div>
 
-          <h3>【砲陣地座標與橫向配置矩陣】</h3>
+          <h3>【砲陣地座標與對正 T1 砲目線配置矩陣】</h3>
           <table style="width:100%; border-collapse:collapse; margin:4px 0; font-size:11px; text-align:center;" border="1">
             <thead>
-              <tr style="background:#f2f2f2;"><th>砲位</th><th>MGRS 座標</th><th>標高</th><th>對應 OP 位置</th></tr>
+              <tr style="background:#f2f2f2;"><th>砲位</th><th>MGRS 10碼座標</th><th>標高</th><th>對應 OP 位置</th></tr>
             </thead>
             <tbody>${gunsPositionTableRows}</tbody>
           </table>
           <div style="font-size:11px; margin-top:3px;">
-            <b>陣地配置距離：</b>#2對#1砲橫向距: ${dispM2M1Text} | #3對#2砲橫向距: ${dispM3M2Text}
+            <b>砲目線配置：</b><br>
+            • #1砲對#2砲 水平距: ${dispM2M1_H_Text} | 垂直距(砲目線投影): ${dispM2M1_V_Text}<br>
+            • #3砲對#2砲 水平距: ${dispM3M2_H_Text} | 垂直距(砲目線投影): ${dispM3M2_V_Text}
           </div>
 
           <div class="img-container">
             <img src="${canvasImg}" style="border-radius:50%;" />
           </div>
 
-          <h3>【目標點座標清單 (MGRS 格式)】</h3>
+          <h3>【目標點座標清單 (MGRS 10碼格式)】</h3>
           <ul>${targetsListHtml}</ul>
 
           <h3>【觀測員 #2砲試射修正記錄表】</h3>
@@ -2498,4 +2692,3 @@
   </script>
 </body>
 </html>
-
