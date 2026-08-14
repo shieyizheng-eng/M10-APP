@@ -436,7 +436,6 @@
       font-size: 0.75rem;
     }
 
-    /* 地圖長按快捷選單樣式 */
     .map-context-menu {
       background-color: #1c262f;
       border: 1px solid #00a8ff;
@@ -485,7 +484,6 @@
     
     <div class="sidebar" id="sidebarContainer">
       
-      <!-- 本地狀態清空控制列 -->
       <div class="input-group" style="background:#1e272e; border-color:#9b59b6; margin-bottom:4px; padding:6px 10px;">
         <div class="input-row" style="margin:0;">
           <label style="color:#a55eea; font-weight:bold;">💾 本地內存狀態</label>
@@ -1012,7 +1010,7 @@
       <div class="canvas-container" id="canvasContainer">
         <canvas id="boardCanvas" width="760" height="760"></canvas>
       </div>
-      <div class="board-hint" id="viewHint">💡 Google Maps 級手感：雙指隨意捏合縮放｜單指甩動帶慣性滑行</div>
+      <div class="board-hint" id="viewHint">💡 雙指捏合／滾輪精準軸心縮放｜單指甩動慣性滑行</div>
       
       <div class="board-layer-bar">
         <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
@@ -1229,6 +1227,23 @@
     window.addEventListener('resize', () => { switchMainTab(currentMainView); });
 
     // ==========================================
+    // ⛰️ 經緯度海拔標高 (Elevation API) 抓取模組
+    // ==========================================
+
+    async function fetchElevation(lat, lng) {
+      try {
+        const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
+        const data = await res.json();
+        if (data && data.elevation && data.elevation.length > 0) {
+          return Math.round(data.elevation[0]);
+        }
+      } catch (e) {
+        console.warn('Elevation API 連線失敗或離線模式:', e);
+      }
+      return null;
+    }
+
+    // ==========================================
     // 🗺️ 真實圖例地圖初始化與長按快捷設定功能
     // ==========================================
 
@@ -1252,22 +1267,36 @@
       L.control.layers({ "全球街道圖": osm, "高解析衛星圖": esriSat, "電子地圖": nlscEmap }, null, { position: 'topright' }).addTo(map);
       mapMarkersGroup = L.layerGroup().addTo(map);
 
-      // 地圖單擊與長按事件處理
-      map.on('click', (e) => {
+      // 地圖單擊：顯示雙座標與自動抓取標高
+      map.on('click', async (e) => {
         const mgrsStr = latLngToMGRSStr(e.latlng.lat, e.latlng.lng);
         const utmStr = latLngToUTMStr(e.latlng.lat, e.latlng.lng);
 
-        L.popup()
+        const popup = L.popup()
           .setLatLng(e.latlng)
           .setContent(`
             <div style="font-size:0.78rem; line-height:1.4;">
               <strong style="color:#00a8ff;">📍 點選位置座標</strong><br>
               <b>MGRS:</b> ${mgrsStr}<br>
               <b>UTM:</b> ${utmStr}<br>
+              <b>標高:</b> <span style="color:#e1b12c;">抓取中...</span><br>
               <span style="font-size:0.7rem; color:#8395a7;">💡 長按此處可設為觀測所/陣地/目標</span>
             </div>
           `)
           .openOn(map);
+
+        const fetchedAlt = await fetchElevation(e.latlng.lat, e.latlng.lng);
+        const altStr = fetchedAlt !== null ? `${fetchedAlt} m` : '無法取得 (離線)';
+
+        popup.setContent(`
+          <div style="font-size:0.78rem; line-height:1.4;">
+            <strong style="color:#00a8ff;">📍 點選位置座標</strong><br>
+            <b>MGRS:</b> ${mgrsStr}<br>
+            <b>UTM:</b> ${utmStr}<br>
+            <b>標高:</b> <strong style="color:#e1b12c;">${altStr}</strong><br>
+            <span style="font-size:0.7rem; color:#8395a7;">💡 長按此處可設為觀測所/陣地/目標</span>
+          </div>
+        `);
       });
 
       map.on('contextmenu', (e) => {
@@ -1319,12 +1348,12 @@
 
         const content = `
           <div class="map-context-menu">
-            <div class="map-context-menu-title">📍 點選座標 ${e5} / ${n5} 設定為:</div>
-            <button class="map-context-btn" onclick="applyMapLocation('target', '${e5}', '${n5}')">🎯 新增目標 (自動順延編號)</button>
-            <button class="map-context-btn" onclick="applyMapLocation('op', '${e5}', '${n5}')">👁️ 觀測員觀測所 (OP)</button>
-            <button class="map-context-btn" onclick="applyMapLocation('m1', '${e5}', '${n5}')">💥 #1 砲陣地</button>
-            <button class="map-context-btn" onclick="applyMapLocation('m2', '${e5}', '${n5}')">💥 #2 基準砲陣地</button>
-            <button class="map-context-btn" onclick="applyMapLocation('m3', '${e5}', '${n5}')">💥 #3 砲陣地</button>
+            <div class="map-context-menu-title">📍 座標 ${e5}/${n5} 設為:</div>
+            <button class="map-context-btn" onclick="applyMapLocation('target', '${e5}', '${n5}', ${latlng.lat}, ${latlng.lng})">🎯 新增目標 (自動帶入海拔)</button>
+            <button class="map-context-btn" onclick="applyMapLocation('op', '${e5}', '${n5}', ${latlng.lat}, ${latlng.lng})">👁️ 觀測員觀測所 (OP)</button>
+            <button class="map-context-btn" onclick="applyMapLocation('m1', '${e5}', '${n5}', ${latlng.lat}, ${latlng.lng})">💥 #1 砲陣地</button>
+            <button class="map-context-btn" onclick="applyMapLocation('m2', '${e5}', '${n5}', ${latlng.lat}, ${latlng.lng})">💥 #2 基準砲陣地</button>
+            <button class="map-context-btn" onclick="applyMapLocation('m3', '${e5}', '${n5}', ${latlng.lat}, ${latlng.lng})">💥 #3 砲陣地</button>
           </div>
         `;
 
@@ -1337,23 +1366,33 @@
       }
     }
 
-    function applyMapLocation(type, e5, n5) {
+    async function applyMapLocation(type, e5, n5, lat, lng) {
+      let fetchedAlt = null;
+      if (lat && lng) {
+        fetchedAlt = await fetchElevation(lat, lng);
+      }
+      const finalAlt = fetchedAlt !== null ? fetchedAlt : 50;
+
       if (type === 'op') {
         document.getElementById('opE10').value = e5;
         document.getElementById('opN10').value = n5;
+        if (fetchedAlt !== null) document.getElementById('opAlt').value = finalAlt;
       } else if (type === 'm1') {
         document.getElementById('m1E10').value = e5;
         document.getElementById('m1N10').value = n5;
+        if (fetchedAlt !== null) document.getElementById('m1Alt').value = finalAlt;
       } else if (type === 'm2') {
         document.getElementById('m2E10').value = e5;
         document.getElementById('m2N10').value = n5;
+        if (fetchedAlt !== null) document.getElementById('m2Alt').value = finalAlt;
       } else if (type === 'm3') {
         document.getElementById('m3E10').value = e5;
         document.getElementById('m3N10').value = n5;
+        if (fetchedAlt !== null) document.getElementById('m3Alt').value = finalAlt;
       } else if (type === 'target') {
         const container = document.getElementById('targetInputsContainer');
         const count = container.querySelectorAll('.target-input-row').length + 1;
-        addNewTargetRow(`T${count}`, e5, n5, 50);
+        addNewTargetRow(`T${count}`, e5, n5, finalAlt);
       }
 
       map.closePopup();
@@ -1612,7 +1651,7 @@
     }
 
     // ==========================================
-    // 🎯 M10 圖板手感重構 (Google Maps 級流暢度：Focal Point 軸心縮放 + 甩動慣性滑行)
+    // 🎯 M10 圖板手感重構（修正精準焦點向量 Focal Vector 縮放）
     // ==========================================
 
     let velocityX = 0, velocityY = 0;
@@ -1625,7 +1664,7 @@
       if (Math.hypot(velocityX, velocityY) > 0.1) {
         panOffsetX += velocityX;
         panOffsetY += velocityY;
-        velocityX *= 0.92; // 物理阻尼係數
+        velocityX *= 0.92;
         velocityY *= 0.92;
 
         calculateAndDraw();
@@ -1638,19 +1677,22 @@
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      
+      // 相對於圖板中心的幾何焦點向量
+      const fx = (e.clientX - rect.left) - centerX;
+      const fy = (e.clientY - rect.top) - centerY;
 
       const oldZoom = contentZoomScale;
       const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
       let newZoom = Math.min(Math.max(0.5, oldZoom * zoomFactor), 20.0);
 
-      // 以滑鼠指標為縮放軸心 (Focal Point Zoom)
-      panOffsetX = mouseX - (mouseX - panOffsetX) * (newZoom / oldZoom);
-      panOffsetY = mouseY - (mouseY - panOffsetY) * (newZoom / oldZoom);
+      // 以該指標點為軸心進行座標平移變換
+      panOffsetX = fx - (fx - panOffsetX) * (newZoom / oldZoom);
+      panOffsetY = fy - (fy - panOffsetY) * (newZoom / oldZoom);
 
       contentZoomScale = newZoom;
-      updateZoomUI(); calculateAndDraw();
+      updateZoomUI(); 
+      calculateAndDraw();
     }, { passive: false });
 
     let isDragging = false, startX = 0, startY = 0;
@@ -1659,7 +1701,7 @@
     let initialTouchAngle = null;
     let initialRotationMil = 0;
     let initialZoomScale = 1.0;
-    let touchPivotX = 0, touchPivotY = 0;
+    let touchPivotFx = 0, touchPivotFy = 0;
 
     canvasContainer.addEventListener('mousedown', (e) => {
       isDragging = true;
@@ -1721,9 +1763,9 @@
         initialRotationMil = boardRotationMil;
         initialZoomScale = contentZoomScale;
 
-        // 雙指幾何中心 (Focal Point Pivot)
-        touchPivotX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-        touchPivotY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        // 雙指中心相對於圖板原點的向量
+        touchPivotFx = ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) - centerX;
+        touchPivotFy = ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) - centerY;
       }
     }, { passive: true });
 
@@ -1753,9 +1795,9 @@
         const zoomFactor = currentDist / initialTouchDist;
         let newZoom = Math.min(Math.max(0.5, initialZoomScale * zoomFactor), 20.0);
 
-        // 精準雙指軸心縮放
-        panOffsetX = touchPivotX - (touchPivotX - panOffsetX) * (newZoom / oldZoom);
-        panOffsetY = touchPivotY - (touchPivotY - panOffsetY) * (newZoom / oldZoom);
+        // 雙指焦點軸心精準變換
+        panOffsetX = touchPivotFx - (touchPivotFx - panOffsetX) * (newZoom / oldZoom);
+        panOffsetY = touchPivotFy - (touchPivotFy - panOffsetY) * (newZoom / oldZoom);
 
         const angleDiffRad = currentAngle - initialTouchAngle;
         const angleDiffMil = angleDiffRad * (6400 / (2 * Math.PI));
