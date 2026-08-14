@@ -435,6 +435,41 @@
       margin-top: 6px;
       font-size: 0.75rem;
     }
+
+    /* 地圖長按快捷選單樣式 */
+    .map-context-menu {
+      background-color: #1c262f;
+      border: 1px solid #00a8ff;
+      border-radius: 6px;
+      padding: 6px 0;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+      font-size: 0.8rem;
+    }
+    .map-context-menu-title {
+      padding: 4px 10px;
+      font-weight: bold;
+      color: #00a8ff;
+      border-bottom: 1px solid #3c4858;
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+    }
+    .map-context-btn {
+      width: 100%;
+      padding: 6px 12px;
+      background: transparent;
+      border: none;
+      color: #e0e6ed;
+      text-align: left;
+      cursor: pointer;
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .map-context-btn:hover, .map-context-btn:active {
+      background-color: #00a8ff;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -450,15 +485,12 @@
     
     <div class="sidebar" id="sidebarContainer">
       
-      <!-- 免連網存讀檔工具列 -->
+      <!-- 本地狀態清空控制列 -->
       <div class="input-group" style="background:#1e272e; border-color:#9b59b6; margin-bottom:4px; padding:6px 10px;">
         <div class="input-row" style="margin:0;">
-          <label style="color:#a55eea; font-weight:bold;">💾 本地任務進度</label>
-          <div style="display:flex; gap:4px;">
-            <button class="save-btn" onclick="exportTaskFile()">匯出備份</button>
-            <button class="save-btn" style="background:#3498db;" onclick="document.getElementById('importFileInput').click()">載入任務</button>
-            <button class="save-btn" style="background:#e74c3c;" onclick="resetTaskData()">重置清空</button>
-            <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importTaskFile(event)">
+          <label style="color:#a55eea; font-weight:bold;">💾 本地內存狀態</label>
+          <div>
+            <button class="save-btn" style="background:#e74c3c;" onclick="resetTaskData()">重置清空進度</button>
           </div>
         </div>
       </div>
@@ -980,7 +1012,7 @@
       <div class="canvas-container" id="canvasContainer">
         <canvas id="boardCanvas" width="760" height="760"></canvas>
       </div>
-      <div class="board-hint" id="viewHint">💡 雙指滑動可旋轉與縮放 (最高2000%)｜單指拖曳平移</div>
+      <div class="board-hint" id="viewHint">💡 Google Maps 級手感：雙指隨意捏合縮放｜單指甩動帶慣性滑行</div>
       
       <div class="board-layer-bar">
         <label><input type="checkbox" id="boardLayerTarget" checked onchange="calculateAndDraw()"> 🎯 目標點</label>
@@ -1035,6 +1067,7 @@
 
     let map = null;
     let mapMarkersGroup = null;
+    let longPressTimer = null;
 
     async function toggleKeepAwake(enable) {
       if (enable) {
@@ -1195,6 +1228,10 @@
 
     window.addEventListener('resize', () => { switchMainTab(currentMainView); });
 
+    // ==========================================
+    // 🗺️ 真實圖例地圖初始化與長按快捷設定功能
+    // ==========================================
+
     function initMap() {
       if (map) return;
 
@@ -1214,6 +1251,113 @@
       osm.addTo(map);
       L.control.layers({ "全球街道圖": osm, "高解析衛星圖": esriSat, "電子地圖": nlscEmap }, null, { position: 'topright' }).addTo(map);
       mapMarkersGroup = L.layerGroup().addTo(map);
+
+      // 地圖單擊與長按事件處理
+      map.on('click', (e) => {
+        const mgrsStr = latLngToMGRSStr(e.latlng.lat, e.latlng.lng);
+        const utmStr = latLngToUTMStr(e.latlng.lat, e.latlng.lng);
+
+        L.popup()
+          .setLatLng(e.latlng)
+          .setContent(`
+            <div style="font-size:0.78rem; line-height:1.4;">
+              <strong style="color:#00a8ff;">📍 點選位置座標</strong><br>
+              <b>MGRS:</b> ${mgrsStr}<br>
+              <b>UTM:</b> ${utmStr}<br>
+              <span style="font-size:0.7rem; color:#8395a7;">💡 長按此處可設為觀測所/陣地/目標</span>
+            </div>
+          `)
+          .openOn(map);
+      });
+
+      map.on('contextmenu', (e) => {
+        showMapContextMenu(e.latlng);
+      });
+
+      map.on('mousedown touchstart', (e) => {
+        const latlng = e.latlng || (e.touches && map.mouseEventToLatLng(e.touches[0]));
+        if (!latlng) return;
+        longPressTimer = setTimeout(() => {
+          showMapContextMenu(latlng);
+        }, 500);
+      });
+
+      map.on('mouseup touchend dragstart zoomstart', () => {
+        if (longPressTimer) clearTimeout(longPressTimer);
+      });
+    }
+
+    function latLngToMGRSStr(lat, lng) {
+      try {
+        const m = mgrs.forward([lng, lat], 5);
+        const band = document.getElementById('mgrsBand').value || 'R';
+        const sq = document.getElementById('mgrsSq').value || 'TK';
+        const e5 = m.substring(m.length - 10, m.length - 5);
+        const n5 = m.substring(m.length - 5);
+        return `51${band} ${sq} ${e5} ${n5}`;
+      } catch (e) {
+        return '計算失敗';
+      }
+    }
+
+    function latLngToUTMStr(lat, lng) {
+      try {
+        const point = mgrs.forward([lng, lat], 5);
+        const e5 = parseInt(point.substring(point.length - 10, point.length - 5));
+        const n5 = parseInt(point.substring(point.length - 5));
+        return `51N E:${200000 + e5} N:${2900000 + n5}`;
+      } catch (e) {
+        return '計算失敗';
+      }
+    }
+
+    function showMapContextMenu(latlng) {
+      try {
+        const m = mgrs.forward([latlng.lng, latlng.lat], 5);
+        const e5 = m.substring(m.length - 10, m.length - 5);
+        const n5 = m.substring(m.length - 5);
+
+        const content = `
+          <div class="map-context-menu">
+            <div class="map-context-menu-title">📍 點選座標 ${e5} / ${n5} 設定為:</div>
+            <button class="map-context-btn" onclick="applyMapLocation('target', '${e5}', '${n5}')">🎯 新增目標 (自動順延編號)</button>
+            <button class="map-context-btn" onclick="applyMapLocation('op', '${e5}', '${n5}')">👁️ 觀測員觀測所 (OP)</button>
+            <button class="map-context-btn" onclick="applyMapLocation('m1', '${e5}', '${n5}')">💥 #1 砲陣地</button>
+            <button class="map-context-btn" onclick="applyMapLocation('m2', '${e5}', '${n5}')">💥 #2 基準砲陣地</button>
+            <button class="map-context-btn" onclick="applyMapLocation('m3', '${e5}', '${n5}')">💥 #3 砲陣地</button>
+          </div>
+        `;
+
+        L.popup()
+          .setLatLng(latlng)
+          .setContent(content)
+          .openOn(map);
+      } catch (e) {
+        alert("無法解析該地點座標！");
+      }
+    }
+
+    function applyMapLocation(type, e5, n5) {
+      if (type === 'op') {
+        document.getElementById('opE10').value = e5;
+        document.getElementById('opN10').value = n5;
+      } else if (type === 'm1') {
+        document.getElementById('m1E10').value = e5;
+        document.getElementById('m1N10').value = n5;
+      } else if (type === 'm2') {
+        document.getElementById('m2E10').value = e5;
+        document.getElementById('m2N10').value = n5;
+      } else if (type === 'm3') {
+        document.getElementById('m3E10').value = e5;
+        document.getElementById('m3N10').value = n5;
+      } else if (type === 'target') {
+        const container = document.getElementById('targetInputsContainer');
+        const count = container.querySelectorAll('.target-input-row').length + 1;
+        addNewTargetRow(`T${count}`, e5, n5, 50);
+      }
+
+      map.closePopup();
+      calculateAndDraw();
     }
 
     function parseMGRSToLatLng(e5Str, n5Str) {
@@ -1467,6 +1611,30 @@
       updateZoomUI(); calculateAndDraw();
     }
 
+    // ==========================================
+    // 🎯 M10 圖板手感重構 (Google Maps 級流暢度：Focal Point 軸心縮放 + 甩動慣性滑行)
+    // ==========================================
+
+    let velocityX = 0, velocityY = 0;
+    let lastTime = 0, animFrameId = null;
+    let isTouchActive = false;
+
+    function applyInertia() {
+      if (isTouchActive) return;
+
+      if (Math.hypot(velocityX, velocityY) > 0.1) {
+        panOffsetX += velocityX;
+        panOffsetY += velocityY;
+        velocityX *= 0.92; // 物理阻尼係數
+        velocityY *= 0.92;
+
+        calculateAndDraw();
+        animFrameId = requestAnimationFrame(applyInertia);
+      } else {
+        velocityX = 0; velocityY = 0;
+      }
+    }
+
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
       const rect = canvas.getBoundingClientRect();
@@ -1474,9 +1642,10 @@
       const mouseY = e.clientY - rect.top;
 
       const oldZoom = contentZoomScale;
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+      const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
       let newZoom = Math.min(Math.max(0.5, oldZoom * zoomFactor), 20.0);
 
+      // 以滑鼠指標為縮放軸心 (Focal Point Zoom)
       panOffsetX = mouseX - (mouseX - panOffsetX) * (newZoom / oldZoom);
       panOffsetY = mouseY - (mouseY - panOffsetY) * (newZoom / oldZoom);
 
@@ -1485,29 +1654,64 @@
     }, { passive: false });
 
     let isDragging = false, startX = 0, startY = 0;
+    let lastMouseX = 0, lastMouseY = 0;
     let initialTouchDist = null;
     let initialTouchAngle = null;
     let initialRotationMil = 0;
     let initialZoomScale = 1.0;
+    let touchPivotX = 0, touchPivotY = 0;
 
     canvasContainer.addEventListener('mousedown', (e) => {
       isDragging = true;
+      isTouchActive = true;
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+
       startX = e.clientX - panOffsetX;
       startY = e.clientY - panOffsetY;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      lastTime = performance.now();
     });
+
     window.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
+      const now = performance.now();
+      const dt = Math.max(1, now - lastTime);
+
       panOffsetX = e.clientX - startX;
       panOffsetY = e.clientY - startY;
+
+      velocityX = ((e.clientX - lastMouseX) / dt) * 12;
+      velocityY = ((e.clientY - lastMouseY) / dt) * 12;
+
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      lastTime = now;
+
       calculateAndDraw();
     });
-    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        isTouchActive = false;
+        applyInertia();
+      }
+    });
 
     canvasContainer.addEventListener('touchstart', (e) => {
+      isTouchActive = true;
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+
+      const rect = canvas.getBoundingClientRect();
+
       if (e.touches.length === 1) {
         isDragging = true;
         startX = e.touches[0].clientX - panOffsetX;
         startY = e.touches[0].clientY - panOffsetY;
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        lastTime = performance.now();
       } else if (e.touches.length === 2) {
         isDragging = false;
         const dx = e.touches[1].clientX - e.touches[0].clientX;
@@ -1516,13 +1720,28 @@
         initialTouchAngle = Math.atan2(dy, dx);
         initialRotationMil = boardRotationMil;
         initialZoomScale = contentZoomScale;
+
+        // 雙指幾何中心 (Focal Point Pivot)
+        touchPivotX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        touchPivotY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
       }
     }, { passive: true });
 
     canvasContainer.addEventListener('touchmove', (e) => {
       if (isDragging && e.touches.length === 1) {
+        const now = performance.now();
+        const dt = Math.max(1, now - lastTime);
+
         panOffsetX = e.touches[0].clientX - startX;
         panOffsetY = e.touches[0].clientY - startY;
+
+        velocityX = ((e.touches[0].clientX - lastMouseX) / dt) * 12;
+        velocityY = ((e.touches[0].clientY - lastMouseY) / dt) * 12;
+
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+        lastTime = now;
+
         calculateAndDraw();
       } else if (e.touches.length === 2 && initialTouchDist && initialTouchAngle !== null) {
         const dx = e.touches[1].clientX - e.touches[0].clientX;
@@ -1530,12 +1749,19 @@
         const currentDist = Math.hypot(dx, dy);
         const currentAngle = Math.atan2(dy, dx);
 
+        const oldZoom = contentZoomScale;
         const zoomFactor = currentDist / initialTouchDist;
-        contentZoomScale = Math.min(Math.max(0.5, initialZoomScale * zoomFactor), 20.0);
+        let newZoom = Math.min(Math.max(0.5, initialZoomScale * zoomFactor), 20.0);
+
+        // 精準雙指軸心縮放
+        panOffsetX = touchPivotX - (touchPivotX - panOffsetX) * (newZoom / oldZoom);
+        panOffsetY = touchPivotY - (touchPivotY - panOffsetY) * (newZoom / oldZoom);
 
         const angleDiffRad = currentAngle - initialTouchAngle;
         const angleDiffMil = angleDiffRad * (6400 / (2 * Math.PI));
         boardRotationMil = (initialRotationMil - angleDiffMil + 64000) % 6400;
+
+        contentZoomScale = newZoom;
 
         updateRotationUI();
         updateZoomUI();
@@ -1544,7 +1770,11 @@
     }, { passive: true });
 
     canvasContainer.addEventListener('touchend', () => {
-      isDragging = false;
+      isTouchActive = false;
+      if (isDragging) {
+        isDragging = false;
+        applyInertia();
+      }
       initialTouchDist = null;
       initialTouchAngle = null;
     });
@@ -2002,7 +2232,6 @@
       if (currentTab === 'tab4') updateSpecialCorrectionDisplay();
       if (currentMainView === 'map') updateMapMarkers();
 
-      // 自動觸發內存儲存
       autoSaveToLocalStorage();
     }
 
@@ -2466,7 +2695,7 @@
     }
 
     // ==========================================
-    // 💾 本地免連網存讀檔與備份核心邏輯 (Local Storage & JSON)
+    // 💾 本地免連網自動存讀檔 (Local Storage)
     // ==========================================
 
     function getFullStateObject() {
@@ -2498,7 +2727,6 @@
         panOffsetX: panOffsetX,
         panOffsetY: panOffsetY,
         isReindexMode: isReindexMode,
-        // 輸入框控制項
         gridInputs: {
           mgrsBand: document.getElementById('mgrsBand').value,
           mgrsSq: document.getElementById('mgrsSq').value,
@@ -2537,7 +2765,6 @@
           azM1: document.getElementById('azM1').value,
           distM1: document.getElementById('distM1').value
         },
-        // 戰術歷史紀錄
         correctionShots: correctionShots,
         wingShotRounds: wingShotRounds,
         effectFireHistory: effectFireHistory
@@ -2644,36 +2871,6 @@
       } else {
         initDefaultTargets();
       }
-    }
-
-    function exportTaskFile() {
-      const state = getFullStateObject();
-      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const dateStr = new Date().toISOString().slice(0, 10);
-      a.href = url;
-      a.download = `M10_Task_${dateStr}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importTaskFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const state = JSON.parse(e.target.result);
-          loadStateObject(state);
-          alert('✅ 任務進度已成功載入！');
-        } catch (err) {
-          alert('❌ 檔案格式錯誤，無法載入任務！');
-        }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
     }
 
     function resetTaskData() {
@@ -2922,7 +3119,6 @@
       printWin.document.close();
     }
 
-    // 啟動時自動還原上一次進度
     tryRestoreAutoSave();
   </script>
 </body>
